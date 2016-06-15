@@ -316,43 +316,57 @@ Map = {
 }
 
 XML = {
-	xmlRequests: [],
-	openXmlRequest: function(xmlRequest, method, dialogue, target, param, async, whichfunc, maxtime, outputExpected) {
-	  XML.xmlRequests[xmlRequest] = {'request':new XMLHttpRequest()}; // non IE8
+	console: function (data) {
+		if (console) {console.log(data)};
+	},
+	xhr: function (method, url, success) {
+		var xhr = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+		xhr.open(method, url);
+		xhr.onreadystatechange = function() {
+		  if (xhr.readyState>3 && xhr.status==200) success(xhr.responseText);
+		};
+		xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+		return xhr;
+	},
+	get: function (url, success) {
+		var xhr = XML.xhr('GET', url, success);
+		xhr.send();
+		return xhr;
+	},
+	post: function (url, data, success) {
+		var params = typeof data == 'string' ? data : Object.keys(data).map(
+			function(k){ return encodeURIComponent(k) + '=' + encodeURIComponent(data[k]) }
+		).join('&');
+		var xhr = XML.xhr('POST', url, success);
+		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+		// xhr.setRequestHeader('Content-length', params.length);
+		xhr.send(params);
+		return xhr;
+	}
+}
 
-		if(method == "GET"){
-			target = target+"?"+param;
-			param = "";
-		}
+/*
+// http://www.blitzbasic.com/Community/posts.php?topic=25516
 
-		XML.xmlRequests[xmlRequest].request.open(method, target, async);
+function dot (x0,y0,x1,y1,x2,y2) {
+	return (x1-x0)*(y2-y1)-(x2-x1)*(y1-y0);
+}
 
-		if(method == "POST"){
-			XML.xmlRequests[xmlRequest].request.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=UTF-8");
-		}
-
-		if(dialogue == "duo"){ // mono
-			// start timer
-			var seconds = 0;
-			XML.checkBackInterval = setInterval(function(){
-				if(seconds == maxtime && outputExpected){
-					XML.xmlRequests[xmlRequest].request.onreadystatechange = false;
-					if (console) {console.log(whichfunc, 'error: output not given in maxtime')}
-				}
-				seconds += 1000;
-			}, 1000);
-			// start listener
-			XML.xmlRequests[xmlRequest].request.onreadystatechange = function(){
-				if(XML.xmlRequests[xmlRequest].request.readyState==4 && XML.xmlRequests[xmlRequest].request.status==200){
-					clearInterval(XML.checkBackInterval);
-					if (XML.xmlRequests[xmlRequest].request.responseText == '' && outputExpected && console) {
-						console.log(whichfunc, 'error: output expected');
+function insideHex () {
+	if dot(x0,y0,x1,y1,px,py) > 0 {
+		if dot(x1,y1,x2,y2,px,py) > 0 {
+			if dot(x2,y2,x3,y3,px,py) > 0 {
+				if dot(x3,y3,x0,y0,px,py) > 0 {
+					if dot(x4,y4,x0,y0,px,py) > 0 {
+						if dot(x5,y5,x0,y0,px,py) > 0 {
+							return true;
+						}
 					}
-					whichfunc.call(XML.xmlRequests[xmlRequest].request.responseText);
 				}
 			}
 		}
-
-		XML.xmlRequests[xmlRequest].request.send(param);
 	}
+	return false;
 }
+
+*/
