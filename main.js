@@ -1,16 +1,17 @@
 window.onload = function () {
-	XML.openXmlRequest(0, "GET", "duo", "export.php", 'f', true, Map.init, 2000, 1);
+	XML.get( 'export.php?f', Map.init );
 }
 
 function build () {
-	XML.openXmlRequest(0, "GET", "duo", "export.php", 'b', true, Map.init, 2000, 0);
+	XML.get( 'export.php?b', Map.init );
 }
 function corrugate () {
-	XML.openXmlRequest(0, "GET", "duo", "export.php", 'c', true, Map.init, 2000, 0);
+	XML.get( 'export.php?c', Map.init );
 }
 function irrigate () {
-	XML.openXmlRequest(0, "GET", "duo", "export.php", 'w', true, Map.init, 2000, 0);
+	XML.get( 'export.php?w', Map.init );
 }
+
 function insideTriagle (s, a, b, c) {
 	var as_x = s.x-a.x;
 	var as_y = s.y-a.y;
@@ -21,9 +22,31 @@ function insideTriagle (s, a, b, c) {
 	return true;
 }
 
+function dot (x0,y0,x1,y1,x2,y2) {
+	return (x1-x0)*(y2-y1)-(x2-x1)*(y1-y0);
+}
+
+function insideHex () {
+	if ( dot(x0,y0,x1,y1,px,py) > 0) {
+		if ( dot(x1,y1,x2,y2,px,py) > 0) {
+			if ( dot(x2,y2,x3,y3,px,py) > 0) {
+				if ( dot(x3,y3,x0,y0,px,py) > 0) {
+					if ( dot(x4,y4,x0,y0,px,py) > 0) {
+						if ( dot(x5,y5,x0,y0,px,py) > 0) {
+							return true;
+						}
+					}
+				}
+			}
+		}
+	}
+	return false;
+}
+
 Map = {
-	init: function () {
-		var exp = JSON.parse(this);
+	init: function (data) {
+
+		var exp = JSON.parse(data);
 		var map = exp.map;
 		var tiles = exp.tiles;
 		var size = Map.tileSize;
@@ -106,7 +129,7 @@ Map = {
 		}
 		Map.drawRivers();
 
-		var drawHelpGrid = false;
+		var drawHelpGrid = true;
 
 		c.beginPath();
 		c.lineWidth = 1;
@@ -344,29 +367,3 @@ XML = {
 		return xhr;
 	}
 }
-
-/*
-// http://www.blitzbasic.com/Community/posts.php?topic=25516
-
-function dot (x0,y0,x1,y1,x2,y2) {
-	return (x1-x0)*(y2-y1)-(x2-x1)*(y1-y0);
-}
-
-function insideHex () {
-	if dot(x0,y0,x1,y1,px,py) > 0 {
-		if dot(x1,y1,x2,y2,px,py) > 0 {
-			if dot(x2,y2,x3,y3,px,py) > 0 {
-				if dot(x3,y3,x0,y0,px,py) > 0 {
-					if dot(x4,y4,x0,y0,px,py) > 0 {
-						if dot(x5,y5,x0,y0,px,py) > 0 {
-							return true;
-						}
-					}
-				}
-			}
-		}
-	}
-	return false;
-}
-
-*/
