@@ -26,7 +26,7 @@ function dot (x0,y0,x1,y1,x2,y2) {
 	return (x1-x0)*(y2-y1)-(x2-x1)*(y1-y0);
 }
 
-function insideHex () {
+function insideHex (px,py,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4,x5,y5) {
 	if ( dot(x0,y0,x1,y1,px,py) > 0) {
 		if ( dot(x1,y1,x2,y2,px,py) > 0) {
 			if ( dot(x2,y2,x3,y3,px,py) > 0) {
@@ -41,6 +41,41 @@ function insideHex () {
 		}
 	}
 	return false;
+}
+
+function pnpoly (vs, point) {
+    // ray-casting algorithm based on
+    // http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
+    
+    var x = point.x, y = point.y;
+    
+    var inside = false;
+    for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        var xi = vs[i].x, yi = vs[i].y;
+        var xj = vs[j].x, yj = vs[j].y;
+        
+        var intersect = ((yi > y) != (yj > y))
+            && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    
+    return inside;
+}
+
+function closestTo(number, set) {
+	var closest = set[0];
+	var prev = Math.abs(set[0] - number);
+
+	for (var i = 1; i < set.length; i++) {
+		var diff = Math.abs(set[i] - number);
+
+		if (diff < prev) {
+			prev = diff;
+			closest = set[i];
+		}
+	}
+
+	return closest;
 }
 
 Map = {
@@ -87,6 +122,10 @@ Map = {
 				c.fillStyle = '#919191';
 			}
 
+			// if (tile.cord == '+3+4-7') {
+			// 	console.log(points.l*size);
+			// }
+
 			c.beginPath();
 			c.moveTo(points.m*size, points.a*size);
 			c.lineTo(points.l*size, points.b*size);
@@ -129,67 +168,83 @@ Map = {
 		}
 		Map.drawRivers();
 
-		var drawHelpGrid = true;
-
-		c.beginPath();
-		c.lineWidth = 1;
-		c.fillStyle = 'red';
-
-		var smd = 2 * Map.tileSize;
-		var m = 4 * Map.tileSize;
-		var mmd = 5 * Map.tileSize;
-		var md = 7 * Map.tileSize;
-		var tw = 8 * Map.tileSize;
-		var lgd = 9 * Map.tileSize;
-		var drw = lgd - smd;
-		var hdrw = drw/2;
-		var drw2 = 0;
-		var drw3 = 0;
-		var r = (mapH - smd) / drw + 2;
-		var oddR = 0;
-		var twd = 0;
-		var q = mapW / tw;
-		var i = 1;
-		var j = 1;
-		for (i; i < r; i++) {
-			drw2 = i*drw+mapVPy+0.5;
-			if (drawHelpGrid) {
-				c.moveTo(mapVPx, drw2);
-				c.lineTo(mapW, drw2);
-			}
-
-			if (oddR == 0) {
-				twd = 4 * Map.tileSize;
-				oddR = 1;
-			} else {
-				twd = 0;
-				oddR = 0;
-			}
-
-			for (j = -1; j < q; j++) {
-				drw3 = j*tw+mapVPx+twd+0.5;
-				
-				if (drawHelpGrid) {
-					c.moveTo(drw3, drw2-drw-0.5);
-					c.lineTo(drw3, drw2-0.5);
-
-					// triangles
-					c.moveTo(drw3, drw2-drw);
-					c.lineTo(drw3+m, drw2-md);
-					c.lineTo(drw3, drw2-mmd);
-					c.moveTo(drw3+m, drw2-md);
-					c.lineTo(drw3+tw, drw2-md);
-					c.lineTo(drw3+tw, drw2-mmd);
-				}
-			}
-
+		// hex points
+		var hp = {
+			b: 2 * Map.tileSize,
+			m: 4 * Map.tileSize,
+			c: 7 * Map.tileSize,
+			r: 8 * Map.tileSize,
+			d: 9 * Map.tileSize
 		}
 
-		c.fill();
-		c.strokeStyle = "red";
-		c.stroke();
+		var qc = mapW / hp.r;
+		var rc = (mapH - hp.b) / hp.c;
 
-		console.log("rows ",r,'cols ',q);
+		// help grid
+		if (true) {
+			var i = 1;
+			var j = 1;
+			var odd = 0;
+			var add = 0;
+			var q = 0;
+			var r = 0;
+
+			c.lineWidth = 1;
+
+			for (i = 1; i <= rc; i++) {
+				r = i*hp.c+mapVPy-(2.5*Map.tileSize);
+				// c.strokeStyle = "blue";
+				// c.beginPath();
+				// c.moveTo(mapVPx, r+0.5);
+				// c.lineTo(mapW, r+0.5);
+				// c.stroke();
+				// c.closePath;
+
+				if (odd == 0) {
+					add = hp.m;
+					odd = 1;
+				} else {
+					add = 0;
+					odd = 0;
+				}
+
+				for (j = 0; j < qc; j++) {
+					q = j*hp.r+mapVPx+add+0.5+hp.m;
+
+					c.strokeStyle = "red";
+
+					c.beginPath();
+					c.rect(q-5, r-5, 10, 10);
+					c.fillStyle = 'red';
+					c.fill();
+
+					var toX = j*hp.r+add+hp.m;
+					var toY = i*hp.c-2.5*Map.tileSize;
+
+					// console.log(j*hp.r+add, i*hp.c-(2.5*Map.tileSize));
+					if (add) { // even
+						Map.tileCentersXE.push(toX);
+					} else {
+						Map.tileCentersXO.push(toX);
+					}
+					Map.tileCentersY.push(toY);
+					// Map.tileCenters.push({x:toX,y:toY});
+
+					// c.lineTo(q+hp.m, r-hp.c);
+					// c.lineTo(q+hp.r, r-(hp.c-hp.b));
+					// c.lineTo(q+hp.r, r);
+					// c.lineTo(q+hp.m, r+hp.b);
+					// c.lineTo(q, r);
+					
+					c.closePath;
+
+				}
+			}
+		}
+
+		// console.log("rows ",rc,'cols ',qc);
+		var oo = 0;
+		var ii = 0;
 		
 		document.getElementById('map').addEventListener('mousemove', function(e) {
 
@@ -201,69 +256,179 @@ Map = {
 			var x = e.clientX - rect.left;
 			var y = e.clientY - rect.top;
 
-			var r = Math.floor(y / drw);
-			var q = 0;
-			var odd = false;
-			// var q2;
-			// var r2 = Math.floor((y+m) / drw);
+			// var rc = Math.floor(y / (9*Map.tileSize));
+			// var rc = Math.floor((y-Map.tileSize) / (7*Map.tileSize));
+			// console.log(rc);
 
-			if (r % 2) {
-				q = Math.floor(x / tw);
-				odd = true;
-				// q2 = Math.floor((x+hdrw) / tw);
-
+				// c.strokeStyle = "blue";
+				// c.beginPath();
+				// c.moveTo(Map.mapVPx, rc*(7*Map.tileSize)+Map.mapVPy+0.5+Map.tileSize);
+				// c.lineTo(mapW, rc*(7*Map.tileSize)+Map.mapVPy+0.5+Map.tileSize);
+				// c.stroke();
+				// c.closePath;
+			// r = i*hp.c+mapVPy-(2.5*Map.tileSize);
+			var closestY = closestTo(y, Map.tileCentersY);
+			if (Math.floor(closestY / hp.c) % 2 ) {
+				var closestX = closestTo(x, Map.tileCentersXO);
 			} else {
-				q = Math.round(x / tw);
-				// q2 = Math.round((x+hdrw) / tw);
+				var closestX = closestTo(x, Map.tileCentersXE);
 			}
 
-			var qm = 0;
-			var rm = 0;
-			var Al = 0;
-			var Bl = 0;
-			var Cl = 0;
-			var Ar = 0;
-			var Br = 0;
-			var Cr = 0;
+			// y * Math.sqrt(3)
+			// console.log(y * Math.sqrt(3));
 
-			if (odd) {
-				Al = {x:q * tw, y:r * drw};
-				Bl = {x:q * tw, y:r * drw + smd};
-				Cl = {x:q * tw + m, y:r * drw};
+			c.beginPath();
+			c.rect(closestX+Map.mapVPx-5, closestY+Map.mapVPy-5, 10, 10);
+			c.fillStyle = '#'+Math.floor(Math.random()*16777215).toString(16);
+			c.fill();
+			c.closePath;
 
-				Ar = {x:q * tw + m, y:r * drw};
-				Br = {x:q * tw + tw, y:r * drw};
-				Cr = {x:q * tw + tw, y:r * drw + m};
-			} else {
-				Al = {x:q * tw - m, y:r * drw};
-				Bl = {x:q * tw, y:r * drw};
-				Cl = {x:q * tw - m, y:r * drw + smd};
+			// var len = Map.tileCenters.length;
+			// var i = 0;
+			// var valid = false;
+			// for (i; i < len; i++) {
+			// 	if (Map.tileCenters[i].x == closestX) {
+			// 		if (Map.tileCenters[i].y == closestY) {
+			// 			valid = true;
+			// 		}
+			// 	}
+			// 	if (Map.tileCenters[i].y == closestY) {
+			// 		if (Map.tileCenters[i].x == closestX) {
+			// 			valid = true;
+			// 		}
+			// 	}
+			// 	if (valid) {
+			// 		break;
+			// 	}
+			// }
 
-				Ar = {x:q * tw + m, y:r * drw};
-				Br = {x:q * tw, y:r * drw};
-				Cr = {x:q * tw + m, y:r * drw + smd};
-			}
+			// if (valid) {
+			// 	c.beginPath();
+			// 	c.rect(closestX+Map.mapVPx-5, closestY+Map.mapVPy-5, 10, 10);
+			// 	c.fillStyle = '#'+Math.floor(Math.random()*16777215).toString(16);
+			// 	c.fill();
+			// 	c.closePath;
+			// }
 
-			// left triangle
-			var rm = 0;
-			if ( insideTriagle({x:x,y:y},Al,Bl,Cl) ) {
-				q--;
-				r--;
-			}
-			// right triangle
-			if ( insideTriagle({x:x,y:y},Ar,Br,Cr) ) {
-				if (odd) {
-					q++;
-				}
-				r--;
-			}
+			// console.log(closestX,closestY);
+			// var a = 
+
+			// var rc = Math.floor(y / hp.c) + 1; // TODO
+			// var qc = 0;
+			// var add = 0;
+
+			// if (rc % 2) {
+			// 	add = hp.m;
+			// 	qc = Math.round(x / hp.r)-1;
+			// } else {
+			// 	qc = Math.floor(x / hp.r);
+			// }
+
+			// var q = qc*hp.r+add;
+			// var r = rc*hp.c;
+
+			// var points = [];
+			// points[0] = {x:q,y:r}; // lc
+			// points[1] = {x:q,y:r-(hp.c-hp.b)}; // lb
+			// points[2] = {x:q+hp.m,y:r-hp.c}; // ma
+			// points[3] = {x:q+hp.r,y:r-(hp.c-hp.b)}; // rb
+			// points[4] = {x:q+hp.r,y:r}; // rc
+			// points[5] = {x:q+hp.m,y:r+hp.b}; // md
+
+			// if ( pnpoly(points,{x:x,y:y}) ) {
+
+			// 	q = qc*hp.r+mapVPx+add+0.5;
+			// 	r = rc*hp.c+mapVPy+0.5;
+
+				// c.beginPath();
+				// c.moveTo(q, r);
+				// c.lineTo(q, r-(hp.c-hp.b));
+				// c.lineTo(q+hp.m, r-hp.c);
+				// c.lineTo(q+hp.r, r-(hp.c-hp.b));
+				// c.lineTo(q+hp.r, r);
+				// c.lineTo(q+hp.m, r+hp.b);
+				// c.lineTo(q, r);
+				// c.strokeStyle = "red";
+				// c.lineWidth = 1;
+				// c.stroke();
+				// c.closePath;
+				// if (oo != q && ii != r) {
+				// 	// console.log('new');
+				// 	oo = q;
+				// 	ii = r;
+				// }
+
+					// q = qc*hp.r+mapVPx+add+0.5;
+					// r = rc*hp.c+mapVPy+0.5;
+
+					// c.beginPath();
+					// c.moveTo(q, r);
+					// c.lineTo(q, r-(hp.c-hp.b));
+					// c.lineTo(q+hp.m, r-hp.c);
+					// c.lineTo(q+hp.r, r-(hp.c-hp.b));
+					// c.lineTo(q+hp.r, r);
+					// c.lineTo(q+hp.m, r+hp.b);
+					// c.lineTo(q, r);
+					// c.strokeStyle = "red";
+					// c.lineWidth = 1;
+					// c.stroke();
+					// c.closePath;
+				// }
+			// }
+			// console.log(lc,lb,ma,rb,rc,md);
+
+			// console.log(q,r);
+
+			// var qm = 0;
+			// var rm = 0;
+			// var Al = 0;
+			// var Bl = 0;
+			// var Cl = 0;
+			// var Ar = 0;
+			// var Br = 0;
+			// var Cr = 0;
+
+			// if (odd) {
+			// 	Al = {x:q * tw, y:r * drw};
+			// 	Bl = {x:q * tw, y:r * drw + smd};
+			// 	Cl = {x:q * tw + m, y:r * drw};
+
+			// 	Ar = {x:q * tw + m, y:r * drw};
+			// 	Br = {x:q * tw + tw, y:r * drw};
+			// 	Cr = {x:q * tw + tw, y:r * drw + m};
+			// } else {
+			// 	Al = {x:q * tw - m, y:r * drw};
+			// 	Bl = {x:q * tw, y:r * drw};
+			// 	Cl = {x:q * tw - m, y:r * drw + smd};
+
+			// 	Ar = {x:q * tw + m, y:r * drw};
+			// 	Br = {x:q * tw, y:r * drw};
+			// 	Cr = {x:q * tw + m, y:r * drw + smd};
+			// }
+
+			// // left triangle
+			// var rm = 0;
+			// if ( insideTriagle({x:x,y:y},Al,Bl,Cl) ) {
+			// 	q--;
+			// 	r--;
+			// }
+			// // right triangle
+			// if ( insideTriagle({x:x,y:y},Ar,Br,Cr) ) {
+			// 	if (odd) {
+			// 		q++;
+			// 	}
+			// 	r--;
+			// }
 			// console.log(q,r);
 
 		});
 
 	},
-	tileSize: 4,
+	tileSize: 6,
 	tiles: [],
+	tileCentersXE: [],
+	tileCentersXO: [],
+	tileCentersY: [],
 	c: null,
 	drawRiverArr: [],
 	drawRivers: function () {
