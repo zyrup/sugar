@@ -1,5 +1,15 @@
+"use strict";
+
 window.onload = function () {
-	XML.get( 'export.php?f', Map.init );
+	XML.get( 'export.php?f', App.init );
+	console.log('build(); corrugate(); irrigate();');
+}
+
+var App = {
+	init: function (mapData) {
+		Map.init(mapData);
+		Path.init();
+	}
 }
 
 function build () {
@@ -10,56 +20,6 @@ function corrugate () {
 }
 function irrigate () {
 	XML.get( 'export.php?w', Map.init );
-}
-
-function insideTriagle (s, a, b, c) {
-	var as_x = s.x-a.x;
-	var as_y = s.y-a.y;
-	var s_ab = (b.x-a.x)*as_y-(b.y-a.y)*as_x > 0;
-
-	if((c.x-a.x)*as_y-(c.y-a.y)*as_x > 0 == s_ab) return false;
-	if((c.x-b.x)*(s.y-b.y)-(c.y-b.y)*(s.x-b.x) > 0 != s_ab) return false;
-	return true;
-}
-
-function dot (x0,y0,x1,y1,x2,y2) {
-	return (x1-x0)*(y2-y1)-(x2-x1)*(y1-y0);
-}
-
-function insideHex (px,py,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4,x5,y5) {
-	if ( dot(x0,y0,x1,y1,px,py) > 0) {
-		if ( dot(x1,y1,x2,y2,px,py) > 0) {
-			if ( dot(x2,y2,x3,y3,px,py) > 0) {
-				if ( dot(x3,y3,x0,y0,px,py) > 0) {
-					if ( dot(x4,y4,x0,y0,px,py) > 0) {
-						if ( dot(x5,y5,x0,y0,px,py) > 0) {
-							return true;
-						}
-					}
-				}
-			}
-		}
-	}
-	return false;
-}
-
-function pnpoly (vs, point) {
-    // ray-casting algorithm based on
-    // http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
-    
-    var x = point.x, y = point.y;
-    
-    var inside = false;
-    for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
-        var xi = vs[i].x, yi = vs[i].y;
-        var xj = vs[j].x, yj = vs[j].y;
-        
-        var intersect = ((yi > y) != (yj > y))
-            && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-        if (intersect) inside = !inside;
-    }
-    
-    return inside;
 }
 
 function closestTo(number, set) {
@@ -78,7 +38,7 @@ function closestTo(number, set) {
 	return closest;
 }
 
-Map = {
+var Map = {
 	init: function (data) {
 
 		var exp = JSON.parse(data);
@@ -95,10 +55,14 @@ Map = {
 		Map.tiles = tiles;
 
 		Map.c = document.getElementById('map').getContext('2d');
+		Map.touchLayer = document.getElementById('touch').getContext('2d');
 		var c = Map.c;
 		c.canvas.width = mapW;
 		c.canvas.height = mapH;
+		Map.touchLayer.canvas.width = mapW;
+		Map.touchLayer.canvas.height = mapH;
 		c.translate(-mapVPx, -mapVPy);
+		Map.touchLayer.translate(-mapVPx, -mapVPy);
 
 		var len = map.tiles;
 		var i = 0;
@@ -107,8 +71,11 @@ Map = {
 		var height = null;
 		for (i; i<len; i++) {
 			tile = tiles[i];
+
 			points = tile.points;
 			height = tile.height;
+
+			tiles[i].points.my = points.b+(points.c-points.b)/2;
 
 			if (height == 1) {
 				c.fillStyle = '#eeeeee';
@@ -121,10 +88,9 @@ Map = {
 			} else {
 				c.fillStyle = '#919191';
 			}
-
-			// if (tile.cord == '+3+4-7') {
-			// 	console.log(points.l*size);
-			// }
+			if (tile.type == 1) {
+				c.fillStyle = "#99ddff";
+			}
 
 			c.beginPath();
 			c.moveTo(points.m*size, points.a*size);
@@ -136,33 +102,44 @@ Map = {
 			c.closePath();
 			c.fill();
 
-			c.font = "8px Arial";
-			c.fillStyle = '#000';
-			c.fillText(tile.cord,points.l*size,points.c*size);
+			// c.font = "8px Arial";
+			// c.fillStyle = '#000';
+			// c.fillText(tile.cord,points.l*size,points.c*size);
 
 			if (tile.is_river) {
+
+				var land = null;
 				var type = 'full';
 				if (tile.river_to) {
+					land = tiles[tile.river_to-1].type;
 					var b2 = tiles[tile.river_to-1].points.b;
 					var c2 = tiles[tile.river_to-1].points.c;
 					var m2 = tiles[tile.river_to-1].points.m;
 				} else {
+					if (tile.type != 1) {
+						land = 0;
+					}
 					var b2 = null;
 					var c2 = null;
 					var m2 = null;
 					type = 'half';
 				}
 
-				Map.drawRiverArr.push({
-					'id':tile.id-1,
-					'type':type,
-					'b1':tile.points.b,
-					'c1':tile.points.c,
-					'm1':tile.points.m,
-					'b2':b2,
-					'c2':c2,
-					'm2':m2
-				});
+				if (tile.type == 0) {
+					land = 0;
+				}
+
+				if (land == 0) {
+					Map.drawRiverArr.push({
+						'id':tile.id-1,
+						'type':type,
+						'm1':tile.points.m,
+						'my1':tile.points.my,
+						'b2':b2,
+						'c2':c2,
+						'm2':m2
+					});
+				}
 
 			}
 		}
@@ -184,7 +161,6 @@ Map = {
 		if (true) {
 			var i = 1;
 			var j = 1;
-			var odd = 0;
 			var add = 0;
 			var q = 0;
 			var r = 0;
@@ -193,58 +169,32 @@ Map = {
 
 			for (i = 1; i <= rc; i++) {
 				r = i*hp.c+mapVPy-(2.5*Map.tileSize);
-				// c.strokeStyle = "blue";
-				// c.beginPath();
-				// c.moveTo(mapVPx, r+0.5);
-				// c.lineTo(mapW, r+0.5);
-				// c.stroke();
-				// c.closePath;
 
-				if (odd == 0) {
+				if (add == 0) {
 					add = hp.m;
-					odd = 1;
 				} else {
 					add = 0;
-					odd = 0;
 				}
 
 				for (j = 0; j < qc; j++) {
 					q = j*hp.r+mapVPx+add+0.5+hp.m;
 
-					c.strokeStyle = "red";
-
-					c.beginPath();
-					c.rect(q-5, r-5, 10, 10);
-					c.fillStyle = 'red';
-					c.fill();
-
 					var toX = j*hp.r+add+hp.m;
 					var toY = i*hp.c-2.5*Map.tileSize;
 
-					// console.log(j*hp.r+add, i*hp.c-(2.5*Map.tileSize));
 					if (add) { // even
 						Map.tileCentersXE.push(toX);
 					} else {
 						Map.tileCentersXO.push(toX);
 					}
 					Map.tileCentersY.push(toY);
-					// Map.tileCenters.push({x:toX,y:toY});
-
-					// c.lineTo(q+hp.m, r-hp.c);
-					// c.lineTo(q+hp.r, r-(hp.c-hp.b));
-					// c.lineTo(q+hp.r, r);
-					// c.lineTo(q+hp.m, r+hp.b);
-					// c.lineTo(q, r);
 					
-					c.closePath;
 
 				}
 			}
 		}
 
-		// console.log("rows ",rc,'cols ',qc);
-		var oo = 0;
-		var ii = 0;
+		return;
 		
 		document.getElementById('map').addEventListener('mousemove', function(e) {
 
@@ -256,17 +206,6 @@ Map = {
 			var x = e.clientX - rect.left;
 			var y = e.clientY - rect.top;
 
-			// var rc = Math.floor(y / (9*Map.tileSize));
-			// var rc = Math.floor((y-Map.tileSize) / (7*Map.tileSize));
-			// console.log(rc);
-
-				// c.strokeStyle = "blue";
-				// c.beginPath();
-				// c.moveTo(Map.mapVPx, rc*(7*Map.tileSize)+Map.mapVPy+0.5+Map.tileSize);
-				// c.lineTo(mapW, rc*(7*Map.tileSize)+Map.mapVPy+0.5+Map.tileSize);
-				// c.stroke();
-				// c.closePath;
-			// r = i*hp.c+mapVPy-(2.5*Map.tileSize);
 			var closestY = closestTo(y, Map.tileCentersY);
 			if (Math.floor(closestY / hp.c) % 2 ) {
 				var closestX = closestTo(x, Map.tileCentersXO);
@@ -274,157 +213,25 @@ Map = {
 				var closestX = closestTo(x, Map.tileCentersXE);
 			}
 
-			// y * Math.sqrt(3)
-			// console.log(y * Math.sqrt(3));
+			var q = closestX+Map.mapVPx;
+			var r = closestY+Map.mapVPy;
 
 			c.beginPath();
-			c.rect(closestX+Map.mapVPx-5, closestY+Map.mapVPy-5, 10, 10);
-			c.fillStyle = '#'+Math.floor(Math.random()*16777215).toString(16);
+			c.moveTo(q-hp.m, r-(2.5*Map.tileSize));
+			c.lineTo(q, r-(4.5*Map.tileSize));
+			c.lineTo(q+hp.m, r-(2.5*Map.tileSize));
+			c.lineTo(q+hp.m, r+(2.5*Map.tileSize));
+			c.lineTo(q, r+(4.5*Map.tileSize));
+			c.lineTo(q-hp.m, r+(2.5*Map.tileSize));
+			c.lineTo(q-hp.m, r-(2.5*Map.tileSize));
+			c.fillStyle = 'red';
 			c.fill();
 			c.closePath;
-
-			// var len = Map.tileCenters.length;
-			// var i = 0;
-			// var valid = false;
-			// for (i; i < len; i++) {
-			// 	if (Map.tileCenters[i].x == closestX) {
-			// 		if (Map.tileCenters[i].y == closestY) {
-			// 			valid = true;
-			// 		}
-			// 	}
-			// 	if (Map.tileCenters[i].y == closestY) {
-			// 		if (Map.tileCenters[i].x == closestX) {
-			// 			valid = true;
-			// 		}
-			// 	}
-			// 	if (valid) {
-			// 		break;
-			// 	}
-			// }
-
-			// if (valid) {
-			// 	c.beginPath();
-			// 	c.rect(closestX+Map.mapVPx-5, closestY+Map.mapVPy-5, 10, 10);
-			// 	c.fillStyle = '#'+Math.floor(Math.random()*16777215).toString(16);
-			// 	c.fill();
-			// 	c.closePath;
-			// }
-
-			// console.log(closestX,closestY);
-			// var a = 
-
-			// var rc = Math.floor(y / hp.c) + 1; // TODO
-			// var qc = 0;
-			// var add = 0;
-
-			// if (rc % 2) {
-			// 	add = hp.m;
-			// 	qc = Math.round(x / hp.r)-1;
-			// } else {
-			// 	qc = Math.floor(x / hp.r);
-			// }
-
-			// var q = qc*hp.r+add;
-			// var r = rc*hp.c;
-
-			// var points = [];
-			// points[0] = {x:q,y:r}; // lc
-			// points[1] = {x:q,y:r-(hp.c-hp.b)}; // lb
-			// points[2] = {x:q+hp.m,y:r-hp.c}; // ma
-			// points[3] = {x:q+hp.r,y:r-(hp.c-hp.b)}; // rb
-			// points[4] = {x:q+hp.r,y:r}; // rc
-			// points[5] = {x:q+hp.m,y:r+hp.b}; // md
-
-			// if ( pnpoly(points,{x:x,y:y}) ) {
-
-			// 	q = qc*hp.r+mapVPx+add+0.5;
-			// 	r = rc*hp.c+mapVPy+0.5;
-
-				// c.beginPath();
-				// c.moveTo(q, r);
-				// c.lineTo(q, r-(hp.c-hp.b));
-				// c.lineTo(q+hp.m, r-hp.c);
-				// c.lineTo(q+hp.r, r-(hp.c-hp.b));
-				// c.lineTo(q+hp.r, r);
-				// c.lineTo(q+hp.m, r+hp.b);
-				// c.lineTo(q, r);
-				// c.strokeStyle = "red";
-				// c.lineWidth = 1;
-				// c.stroke();
-				// c.closePath;
-				// if (oo != q && ii != r) {
-				// 	// console.log('new');
-				// 	oo = q;
-				// 	ii = r;
-				// }
-
-					// q = qc*hp.r+mapVPx+add+0.5;
-					// r = rc*hp.c+mapVPy+0.5;
-
-					// c.beginPath();
-					// c.moveTo(q, r);
-					// c.lineTo(q, r-(hp.c-hp.b));
-					// c.lineTo(q+hp.m, r-hp.c);
-					// c.lineTo(q+hp.r, r-(hp.c-hp.b));
-					// c.lineTo(q+hp.r, r);
-					// c.lineTo(q+hp.m, r+hp.b);
-					// c.lineTo(q, r);
-					// c.strokeStyle = "red";
-					// c.lineWidth = 1;
-					// c.stroke();
-					// c.closePath;
-				// }
-			// }
-			// console.log(lc,lb,ma,rb,rc,md);
-
-			// console.log(q,r);
-
-			// var qm = 0;
-			// var rm = 0;
-			// var Al = 0;
-			// var Bl = 0;
-			// var Cl = 0;
-			// var Ar = 0;
-			// var Br = 0;
-			// var Cr = 0;
-
-			// if (odd) {
-			// 	Al = {x:q * tw, y:r * drw};
-			// 	Bl = {x:q * tw, y:r * drw + smd};
-			// 	Cl = {x:q * tw + m, y:r * drw};
-
-			// 	Ar = {x:q * tw + m, y:r * drw};
-			// 	Br = {x:q * tw + tw, y:r * drw};
-			// 	Cr = {x:q * tw + tw, y:r * drw + m};
-			// } else {
-			// 	Al = {x:q * tw - m, y:r * drw};
-			// 	Bl = {x:q * tw, y:r * drw};
-			// 	Cl = {x:q * tw - m, y:r * drw + smd};
-
-			// 	Ar = {x:q * tw + m, y:r * drw};
-			// 	Br = {x:q * tw, y:r * drw};
-			// 	Cr = {x:q * tw + m, y:r * drw + smd};
-			// }
-
-			// // left triangle
-			// var rm = 0;
-			// if ( insideTriagle({x:x,y:y},Al,Bl,Cl) ) {
-			// 	q--;
-			// 	r--;
-			// }
-			// // right triangle
-			// if ( insideTriagle({x:x,y:y},Ar,Br,Cr) ) {
-			// 	if (odd) {
-			// 		q++;
-			// 	}
-			// 	r--;
-			// }
-			// console.log(q,r);
 
 		});
 
 	},
-	tileSize: 6,
+	tileSize: 3,
 	tiles: [],
 	tileCentersXE: [],
 	tileCentersXO: [],
@@ -435,7 +242,6 @@ Map = {
 		var len = Map.drawRiverArr.length;
 		var i = 0;
 		var tile = null;
-		var my1 = null;
 		var my2 = null;
 		var c = Map.c;
 		var size = Map.tileSize;
@@ -443,8 +249,7 @@ Map = {
 			tile = Map.drawRiverArr[i];
 
 			c.beginPath();
-			my1 = tile.b1+(tile.c1-tile.b1)/2;
-			c.moveTo(tile.m1*size, my1*size);
+			c.moveTo(tile.m1*size, tile.my1*size);
 			if (tile.type == 'full') {
 				my2 = tile.b2+(tile.c2-tile.b2)/2;
 				c.lineTo(tile.m2*size, my2*size);
@@ -503,7 +308,7 @@ Map = {
 	}
 }
 
-XML = {
+var XML = {
 	console: function (data) {
 		if (console) {console.log(data)};
 	},
@@ -530,5 +335,179 @@ XML = {
 		// xhr.setRequestHeader('Content-length', params.length);
 		xhr.send(params);
 		return xhr;
+	}
+}
+
+var Path = {
+	neighborDirs: [
+		[1, 0, -1], // ul
+		[1, -1, 0], // ll
+		[0, -1, 1], // bl
+		[-1, 0, 1], // br
+		[-1, 1, 0], // rr
+		[0, 1, -1]  // ur
+	],
+	timer: 'undefined',
+	doneHex: [],
+	nextHex: undefined,
+	considerHex: {},
+	startTile: null,
+	goalTile: null,
+	dirAngle: null,
+	foundGoal: false,
+	init: function () {
+		var goalArrId = Math.floor(Math.random()*Map.tiles.length);
+		var startArrId = Math.floor(Math.random()*Map.tiles.length);
+
+		if (goalArrId == startArrId) {
+			console.log('FROM and TO are the same tiles');
+			return;
+		}
+
+		Path.goalTile = Map.tiles[goalArrId];
+		Path.startTile = Map.tiles[startArrId];
+
+		Path.startTile.points.m
+		Path.drawCircleOnTouchLayer(Path.goalTile.points.m*Map.tileSize, Path.goalTile.points.my*Map.tileSize, 5, '#000000');
+		Path.dirAngle = Path.getAngle (Path.startTile.points.m, Path.startTile.points.my, Path.goalTile.points.m, Path.goalTile.points.my);
+
+		Path.nextHex = startArrId;
+		Path.progressTile(Path.nextHex);
+	},
+	getAngle: function (mx1, my1, mx2, my2) {
+		var dx = Math.abs(mx1 - mx2);
+		var dy = Math.abs(my1 - my2);
+		var theta = Math.atan2(dx, dy);
+		theta *= 180 / Math.PI;
+		theta = Math.round(theta);
+		return theta;
+	},
+	progressTile: function (arrId) {
+		var thisTile = Map.tiles[arrId];
+		var neighborId = null;
+		var i = 0;
+		var j = 0;
+		var len = 0;
+		var len2 = 0;
+		var neBo = [];
+		var neTile = null;
+		var distance = 0;
+		var next = null;
+		var passDone = true;
+		var prevHex = null;
+
+		if (thisTile.n_lb) { neBo.push(thisTile.n_lb); }
+		if (thisTile.n_ll) { neBo.push(thisTile.n_ll); }
+		if (thisTile.n_lu) { neBo.push(thisTile.n_lu); }
+		if (thisTile.n_rb) { neBo.push(thisTile.n_rb); }
+		if (thisTile.n_rr) { neBo.push(thisTile.n_rr); }
+		if (thisTile.n_ru) { neBo.push(thisTile.n_ru); }
+
+		Path.drawCircleOnTouchLayer(thisTile.points.m*Map.tileSize, thisTile.points.my*Map.tileSize, 5, '#FF9100');
+
+		len = neBo.length;
+		for (i; i < len; i++) {
+			passDone = true;
+			neTile = Map.tiles[neBo[i]-1];
+			if (typeof Path.considerHex[neBo[i]-1] == 'undefined') {
+
+				len2 = Path.doneHex.length;
+				j = 0;
+				for (j; j<len2; j++) {
+					if (neTile.id == Path.doneHex[j]) {
+						passDone = false;
+					}
+				}
+
+				if (passDone) {
+					distance = Path.tileDistance({x:neTile.points.m,y:neTile.points.my}, {x:Path.goalTile.points.m,y:Path.goalTile.points.my});
+					Map.tiles[neBo[i]-1].pathCameFrom = arrId;
+					Path.considerHex[neBo[i]-1] = {d:distance};
+
+					if (neTile.id == Path.goalTile.id) {
+
+						prevHex = Path.goalTile.id-1;
+
+						while (Map.tiles[prevHex].pathCameFrom != Path.startTile.id-1) {
+							prevHex = Map.tiles[prevHex].pathCameFrom;
+							Path.drawCircleOnTouchLayer(Map.tiles[prevHex].points.m*Map.tileSize, Map.tiles[prevHex].points.my*Map.tileSize, 5, '#FF0000');
+						}
+
+						Path.foundGoal = true;
+					} else {
+						Path.drawCircleOnTouchLayer(neTile.points.m*Map.tileSize, neTile.points.my*Map.tileSize, 5, '#FFEA00');
+					}
+				}
+
+			}
+		}
+
+		Path.findPrioHex();
+		Path.doneHex.push(thisTile.id);
+
+		if (typeof Path.nextHex == 'undefined') {
+			console.log('error. no next tile');
+		} else if (Path.foundGoal) {
+			console.log('yee');
+		} else {
+			Path.progressTile(Path.nextHex);
+		}
+
+	},
+	drawCircleOnTouchLayer: function (x, y, r, c) {
+		Map.touchLayer.beginPath();
+		Map.touchLayer.arc(x, y, r, 0, 2 * Math.PI, false);
+		Map.touchLayer.fillStyle = c;
+		Map.touchLayer.fill();
+	},
+	findPrioHex: function () {
+		var len = Path.considerHex.length;
+		var i = 0;
+		var arr = [];
+		var bestPrio = null;
+		var conArr = [];
+		var thetaArr = [];
+		var angle = null;
+		var curr = null;
+		var choosen = null;
+		var diff = null;
+
+		// what is the best distance?
+		Object.keys(Path.considerHex).forEach(function(k, i) {
+			arr.push(Path.considerHex[k].d);
+		});
+		bestPrio = Math.min.apply( Math, arr );
+		Object.keys(Path.considerHex).forEach(function(k, i) {
+			if (Path.considerHex[k].d == bestPrio) {
+				conArr.push(k);
+			}
+		});
+
+		// what is the best angle?
+		len = conArr.length;
+		i = 0;
+		for (i; i<len; i++) {
+			angle = Path.getAngle (Map.tiles[conArr[i]].points.m, Map.tiles[conArr[i]].points.my, Path.goalTile.points.m, Path.goalTile.points.my);
+			thetaArr.push({hexId: conArr[i], angle: angle});
+		}
+		curr = thetaArr[0].angle;
+		choosen = thetaArr[0].hexId;
+		diff = Math.abs (Path.dirAngle - curr);
+		i = 0;
+		for (i; i < len; i++) {
+		  var newdiff = Math.abs (Path.dirAngle - thetaArr[i].angle);
+		  if (newdiff < diff) {
+		    diff = newdiff;
+		    curr = thetaArr[i].angle;
+		    choosen = thetaArr[i].hexId;
+		  }
+		}
+
+		Path.nextHex = choosen;
+		delete Path.considerHex[choosen];
+
+	},
+	tileDistance: function(a, b) { // euclidean distance
+		return Math.round(Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)));
 	}
 }
