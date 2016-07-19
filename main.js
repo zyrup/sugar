@@ -3,6 +3,7 @@
 window.onload = function () {
 	XML.get( 'export.php?f', App.init );
 	console.log('build(); corrugate(); irrigate();');
+	console.log('CAUTION: Setting path does work at the moment only once');
 }
 
 var App = {
@@ -22,7 +23,7 @@ function irrigate () {
 	XML.get( 'export.php?w', Map.init );
 }
 
-function closestTo(number, set) {
+function closestTo (number, set) {
 	var closest = set[0];
 	var prev = Math.abs(set[0] - number);
 
@@ -38,6 +39,20 @@ function closestTo(number, set) {
 	return closest;
 }
 
+function stringifyCord (px) {
+	var way = null;
+	if (px < 0) {
+		way = 'm';
+		px = Math.abs(px);
+	} else {
+		way = 'p';
+	}
+	if (px % 1 != 0) {
+		px = px.toString().replace('.', 'd');
+	}
+	return way+px;
+}
+
 var Map = {
 	init: function (data) {
 
@@ -51,6 +66,15 @@ var Map = {
 		var mapVPy = map.u*size;
 		Map.mapVPx = mapVPx;
 		Map.mapVPy = mapVPy;
+
+		// hex points
+		Map.hp = {
+			b: 2 * Map.tileSize,
+			m: 4 * Map.tileSize,
+			c: 7 * Map.tileSize,
+			r: 8 * Map.tileSize,
+			d: 9 * Map.tileSize
+		}
 
 		Map.tiles = tiles;
 
@@ -69,6 +93,8 @@ var Map = {
 		var tile = null;
 		var points = null;
 		var height = null;
+		var pxr = null;
+		var pxq = null;
 		for (i; i<len; i++) {
 			tile = tiles[i];
 
@@ -76,6 +102,22 @@ var Map = {
 			height = tile.height;
 
 			tiles[i].points.my = points.b+(points.c-points.b)/2;
+
+			pxr = stringifyCord(tiles[i].points.m*Map.tileSize);
+			pxq = stringifyCord(tiles[i].points.my*Map.tileSize);
+
+			if(Map.tileCentersObjY.hasOwnProperty(pxr)){
+				Map.tileCentersObjY[pxr].push(i);
+			} else {
+				Map.tileCentersObjY[pxr] = [];
+				Map.tileCentersObjY[pxr].push(i);
+			}
+			if(Map.tileCentersObjX.hasOwnProperty(pxq)){
+				Map.tileCentersObjX[pxq].push(i);
+			} else {
+				Map.tileCentersObjX[pxq] = [];
+				Map.tileCentersObjX[pxq].push(i);
+			}
 
 			if (height == 1) {
 				c.fillStyle = '#eeeeee';
@@ -145,94 +187,49 @@ var Map = {
 		}
 		Map.drawRivers();
 
-		// hex points
-		var hp = {
-			b: 2 * Map.tileSize,
-			m: 4 * Map.tileSize,
-			c: 7 * Map.tileSize,
-			r: 8 * Map.tileSize,
-			d: 9 * Map.tileSize
-		}
+		var qc = mapW / Map.hp.r;
+		var rc = (mapH - Map.hp.b) / Map.hp.c;
 
-		var qc = mapW / hp.r;
-		var rc = (mapH - hp.b) / hp.c;
+		// touching tiles
+		var i = 1;
+		var j = 1;
+		var add = 0;
+		var q = 0;
+		var r = 0;
+		var toX = null;
+		var toY = null;
 
-		// help grid
-		if (true) {
-			var i = 1;
-			var j = 1;
-			var add = 0;
-			var q = 0;
-			var r = 0;
+		for (i = 1; i <= rc; i++) {
+			r = i*Map.hp.c+mapVPy-(2.5*Map.tileSize);
 
-			c.lineWidth = 1;
-
-			for (i = 1; i <= rc; i++) {
-				r = i*hp.c+mapVPy-(2.5*Map.tileSize);
-
-				if (add == 0) {
-					add = hp.m;
-				} else {
-					add = 0;
-				}
-
-				for (j = 0; j < qc; j++) {
-					q = j*hp.r+mapVPx+add+0.5+hp.m;
-
-					var toX = j*hp.r+add+hp.m;
-					var toY = i*hp.c-2.5*Map.tileSize;
-
-					if (add) { // even
-						Map.tileCentersXE.push(toX);
-					} else {
-						Map.tileCentersXO.push(toX);
-					}
-					Map.tileCentersY.push(toY);
-					
-
-				}
-			}
-		}
-
-		return;
-		
-		document.getElementById('map').addEventListener('mousemove', function(e) {
-
-			// Object.keys(data).forEach(function (key) {
-			// 	console.log(data[key]);
-			// });
-
-			var rect = document.getElementById('map').getBoundingClientRect();
-			var x = e.clientX - rect.left;
-			var y = e.clientY - rect.top;
-
-			var closestY = closestTo(y, Map.tileCentersY);
-			if (Math.floor(closestY / hp.c) % 2 ) {
-				var closestX = closestTo(x, Map.tileCentersXO);
+			if (add == 0) {
+				add = Map.hp.m;
 			} else {
-				var closestX = closestTo(x, Map.tileCentersXE);
+				add = 0;
 			}
 
-			var q = closestX+Map.mapVPx;
-			var r = closestY+Map.mapVPy;
+			for (j = 0; j < qc; j++) {
+				q = j*Map.hp.r+mapVPx+add+0.5+Map.hp.m;
 
-			c.beginPath();
-			c.moveTo(q-hp.m, r-(2.5*Map.tileSize));
-			c.lineTo(q, r-(4.5*Map.tileSize));
-			c.lineTo(q+hp.m, r-(2.5*Map.tileSize));
-			c.lineTo(q+hp.m, r+(2.5*Map.tileSize));
-			c.lineTo(q, r+(4.5*Map.tileSize));
-			c.lineTo(q-hp.m, r+(2.5*Map.tileSize));
-			c.lineTo(q-hp.m, r-(2.5*Map.tileSize));
-			c.fillStyle = 'red';
-			c.fill();
-			c.closePath;
+				toX = j*Map.hp.r+add+Map.hp.m;
+				toY = i*Map.hp.c-2.5*Map.tileSize;
 
-		});
+				if (add) { // even
+					Map.tileCentersXE.push(toX);
+				} else {
+					Map.tileCentersXO.push(toX);
+				}
+				Map.tileCentersY.push(toY);
+				
+
+			}
+		}
 
 	},
 	tileSize: 3,
 	tiles: [],
+	tileCentersObjX: {},
+	tileCentersObjY: {},
 	tileCentersXE: [],
 	tileCentersXO: [],
 	tileCentersY: [],
@@ -305,6 +302,11 @@ var Map = {
 			c.stroke();
 
 		}
+	},
+	help: {
+		getTileById: function (id) {
+			console.log(Map.tiles[id]);
+		}
 	}
 }
 
@@ -355,24 +357,115 @@ var Path = {
 	goalTile: null,
 	dirAngle: null,
 	foundGoal: false,
+	initClick: null,
+	touchLayerClicked: 0,
 	init: function () {
-		var goalArrId = Math.floor(Math.random()*Map.tiles.length);
-		var startArrId = Math.floor(Math.random()*Map.tiles.length);
 
-		if (goalArrId == startArrId) {
-			console.log('FROM and TO are the same tiles');
-			return;
-		}
+		document.getElementById('touch').addEventListener('click', function(e) {
+			// Object.keys(data).forEach(function (key) {
+			// 	console.log(data[key]);
+			// });
 
-		Path.goalTile = Map.tiles[goalArrId];
-		Path.startTile = Map.tiles[startArrId];
+			var rect = document.getElementById('touch').getBoundingClientRect();
+			var x = e.clientX - rect.left;
+			var y = e.clientY - rect.top;
 
-		Path.startTile.points.m
+			var closestY = closestTo(y, Map.tileCentersY);
+			if (Math.floor(closestY / Map.hp.c) % 2 ) { // TODO something does sometimes not work out here
+				var closestX = closestTo(x, Map.tileCentersXO);
+			} else {
+				var closestX = closestTo(x, Map.tileCentersXE);
+			}
+
+			var q = closestX+Map.mapVPx;
+			var r = closestY+Map.mapVPy;
+
+			var tileId = Path.getTileBy2Dcord(stringifyCord(r), stringifyCord(q));
+
+			Map.touchLayer.save();
+			Map.touchLayer.setTransform(1, 0, 0, 1, 0, 0);
+			Map.touchLayer.clearRect(0,0,Map.touchLayer.canvas.width,Map.touchLayer.canvas.height);
+			Map.touchLayer.restore();
+
+			if (typeof tileId == 'undefined') {
+				Path.startTile = null;
+				Path.goalTile = null;
+				Path.touchLayerClicked = 0;
+				Path.initClick = false;
+				return;
+			}
+
+			Path.drawCircleOnTouchLayer(q, r, 5, '#000000');
+
+			Path.touchLayerClicked++;
+			if (Path.touchLayerClicked == 1) {
+				Path.startTile = Map.tiles[tileId];
+				Path.initClick = true;
+			}
+
+			if (Path.touchLayerClicked == 2 && Path.initClick) {
+				Path.goalTile = Map.tiles[tileId];
+				if (Path.startTile.id == Path.goalTile.id) {
+					Path.startTile = null;
+					Path.goalTile = null;
+					Path.touchLayerClicked = 1;
+				} else {
+					Path.startPathFinder();
+				}
+			}
+
+			if (Path.touchLayerClicked == 3) {
+				Path.startTile = Path.goalTile;
+				Path.goalTile = Map.tiles[tileId];
+				if (Path.startTile.id == Path.goalTile.id) {
+					Path.goalTile = null;
+					Path.touchLayerClicked = 1;
+				} else {
+					Path.touchLayerClicked = 2;
+					Path.startPathFinder();
+				}
+			}
+
+			// Map.touchLayer.beginPath();
+			// Map.touchLayer.moveTo(q-Map.hp.m, r-(2.5*Map.tileSize));
+			// Map.touchLayer.lineTo(q, r-(4.5*Map.tileSize));
+			// Map.touchLayer.lineTo(q+Map.hp.m, r-(2.5*Map.tileSize));
+			// Map.touchLayer.lineTo(q+Map.hp.m, r+(2.5*Map.tileSize));
+			// Map.touchLayer.lineTo(q, r+(4.5*Map.tileSize));
+			// Map.touchLayer.lineTo(q-Map.hp.m, r+(2.5*Map.tileSize));
+			// Map.touchLayer.lineTo(q-Map.hp.m, r-(2.5*Map.tileSize));
+			// Map.touchLayer.fillStyle = 'red';
+			// Map.touchLayer.fill();
+			// Map.touchLayer.closePath;
+		});
+
+	},
+	startPathFinder: function () {
+		Path.doneHex = [];
+		Path.nextHex = undefined;
+		Path.considerHex = {};
+		Path.foundGoal = false;
+
 		Path.drawCircleOnTouchLayer(Path.goalTile.points.m*Map.tileSize, Path.goalTile.points.my*Map.tileSize, 5, '#000000');
 		Path.dirAngle = Path.getAngle (Path.startTile.points.m, Path.startTile.points.my, Path.goalTile.points.m, Path.goalTile.points.my);
 
-		Path.nextHex = startArrId;
+		Path.nextHex = Path.startTile.id-1;
 		Path.progressTile(Path.nextHex);
+	},
+	getTileBy2Dcord: function (pxr, pxq) {
+		var xArr = Map.tileCentersObjX[pxr];
+		var yArr = Map.tileCentersObjY[pxq];
+		var i = 0;
+		var j = 0;
+		var len1 = xArr.length;
+		var len2 = yArr.length;
+		for (i=0; i<len1; i++) {
+			for (j=0; j<len2; j++) {
+				if (xArr[i] == yArr[j]) {
+					return xArr[i];
+				}
+			}
+		}
 	},
 	getAngle: function (mx1, my1, mx2, my2) {
 		var dx = Math.abs(mx1 - mx2);
@@ -447,8 +540,10 @@ var Path = {
 
 		if (typeof Path.nextHex == 'undefined') {
 			console.log('error. no next tile');
+			Path.touchLayerClicked = 0;
+			Path.initClick = false;
 		} else if (Path.foundGoal) {
-			console.log('yee');
+			console.log('found goal');
 		} else {
 			Path.progressTile(Path.nextHex);
 		}
@@ -461,8 +556,8 @@ var Path = {
 		Map.touchLayer.fill();
 	},
 	findPrioHex: function () {
-		var len = Path.considerHex.length;
 		var i = 0;
+		var len = null;
 		var arr = [];
 		var bestPrio = null;
 		var conArr = [];
@@ -485,6 +580,10 @@ var Path = {
 
 		// what is the best angle?
 		len = conArr.length;
+		if (len == 0) { // this is here at the moment
+			Path.nextHex = undefined;
+			return;
+		}
 		i = 0;
 		for (i; i<len; i++) {
 			angle = Path.getAngle (Map.tiles[conArr[i]].points.m, Map.tiles[conArr[i]].points.my, Path.goalTile.points.m, Path.goalTile.points.my);
