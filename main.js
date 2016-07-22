@@ -499,6 +499,7 @@ var Path = {
 		var pass = null;
 		var gScore = 0;
 		var gScoreIsBest = null;
+		var height = null;
 
 		d = Path.tileDistance({x:Map.tiles[Path.startTile].points.m,y:Map.tiles[Path.startTile].points.my}, {x:Map.tiles[Path.goalTile].points.m,y:Map.tiles[Path.goalTile].points.my});
 		Path.tiles[Path.startTile].g = 0;
@@ -560,7 +561,13 @@ var Path = {
 				//	 the path we have arrived at this neighbor is the shortest one we have seen yet
 				// console.log(Path.tiles[currentNode].g + 1, parseInt(Path.tiles[currentNode].height));
 
-				gScore = Path.tiles[currentNode].g + 1; // parseInt(Path.tiles[currentNode].height)
+				height = parseInt(Path.tiles[currentNode].height);
+				if (height == 1) { height = 1; } else
+				if (height == 2) { height = 5; } else
+				if (height == 3) { height = 15; } else
+				if (height == 4) { height = 40; }
+
+				gScore = Path.tiles[currentNode].g + height; // parseInt(Path.tiles[currentNode].height)
 				gScoreIsBest = false;
 
 				len2 = Path.open.length;
@@ -582,7 +589,7 @@ var Path = {
 				if (gScoreIsBest) {
 					// Found an optimal (so far) path to this node
 					Path.tiles[neighborId].parent = currentNode;
-					Path.tiles[neighborId].g = gScore + parseInt(Path.tiles[currentNode].height) * 10;
+					Path.tiles[neighborId].g = gScore + height;
 					Path.tiles[neighborId].f = Path.tiles[neighborId].g + Path.tiles[neighborId].d;
 				}
 			}
