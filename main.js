@@ -3,7 +3,7 @@
 window.onload = function () {
 	XML.get( 'export.php?f', App.init );
 	console.log('build(); corrugate(); irrigate();');
-	console.log('CAUTION: Setting path does work at the moment only once');
+	console.log('under maintenance');
 }
 
 var App = {
@@ -95,6 +95,7 @@ var Map = {
 		var height = null;
 		var pxr = null;
 		var pxq = null;
+		var neighbors = [];
 		for (i; i<len; i++) {
 			tile = tiles[i];
 
@@ -102,6 +103,19 @@ var Map = {
 			height = tile.height;
 
 			tiles[i].points.my = points.b+(points.c-points.b)/2;
+
+			neighbors = [];
+			if (tiles[i].n_lb) { neighbors.push(tiles[i].n_lb-1); }
+			if (tiles[i].n_ll) { neighbors.push(tiles[i].n_ll-1); }
+			if (tiles[i].n_lu) { neighbors.push(tiles[i].n_lu-1); }
+			if (tiles[i].n_rb) { neighbors.push(tiles[i].n_rb-1); }
+			if (tiles[i].n_rr) { neighbors.push(tiles[i].n_rr-1); }
+			if (tiles[i].n_ru) { neighbors.push(tiles[i].n_ru-1); }
+			Path.tiles[i] = {
+				neighbors: neighbors,
+				x: tiles[i].points.m,
+				y: tiles[i].points.my
+			}
 
 			pxr = stringifyCord(tiles[i].points.m*Map.tileSize);
 			pxq = stringifyCord(tiles[i].points.my*Map.tileSize);
@@ -304,8 +318,38 @@ var Map = {
 		}
 	},
 	help: {
-		getTileById: function (id) {
-			console.log(Map.tiles[id]);
+		drawTileById: function (id) {
+
+			var points = Map.tiles[id].points;
+			var c = Map.c;
+			var size = Map.tileSize;
+			c.fillStyle = 'red';
+
+			c.beginPath();
+			c.moveTo(points.m*size, points.a*size);
+			c.lineTo(points.l*size, points.b*size);
+			c.lineTo(points.l*size, points.c*size);
+			c.lineTo(points.m*size, points.d*size);
+			c.lineTo(points.r*size, points.c*size);
+			c.lineTo(points.r*size, points.b*size);
+			c.closePath();
+			c.fill();
+
+		}
+	},
+	getTileBy2Dcord: function (pxr, pxq) {
+		var xArr = Map.tileCentersObjX[pxr];
+		var yArr = Map.tileCentersObjY[pxq];
+		var i = 0;
+		var j = 0;
+		var len1 = xArr.length;
+		var len2 = yArr.length;
+		for (i=0; i<len1; i++) {
+			for (j=0; j<len2; j++) {
+				if (xArr[i] == yArr[j]) {
+					return xArr[i];
+				}
+			}
 		}
 	}
 }
@@ -349,15 +393,12 @@ var Path = {
 		[-1, 1, 0], // rr
 		[0, 1, -1]  // ur
 	],
-	timer: 'undefined',
-	doneHex: [],
-	nextHex: undefined,
-	considerHex: {},
+	open: [],
+	closed: [],
 	startTile: null,
 	goalTile: null,
-	dirAngle: null,
-	foundGoal: false,
 	initClick: null,
+	tiles:[],
 	touchLayerClicked: 0,
 	init: function () {
 
@@ -380,7 +421,7 @@ var Path = {
 			var q = closestX+Map.mapVPx;
 			var r = closestY+Map.mapVPy;
 
-			var tileId = Path.getTileBy2Dcord(stringifyCord(r), stringifyCord(q));
+			var tileId = Map.getTileBy2Dcord(stringifyCord(r), stringifyCord(q));
 
 			Map.touchLayer.save();
 			Map.touchLayer.setTransform(1, 0, 0, 1, 0, 0);
@@ -399,14 +440,13 @@ var Path = {
 
 			Path.touchLayerClicked++;
 			if (Path.touchLayerClicked == 1) {
-				Path.startTile = Map.tiles[tileId];
+				Path.startTile = tileId;
 				Path.initClick = true;
 			}
 
 			if (Path.touchLayerClicked == 2 && Path.initClick) {
-				Path.goalTile = Map.tiles[tileId];
-				if (Path.startTile.id == Path.goalTile.id) {
-					Path.startTile = null;
+				Path.goalTile = tileId;
+				if (Path.startTile == Path.goalTile) {
 					Path.goalTile = null;
 					Path.touchLayerClicked = 1;
 				} else {
@@ -416,8 +456,8 @@ var Path = {
 
 			if (Path.touchLayerClicked == 3) {
 				Path.startTile = Path.goalTile;
-				Path.goalTile = Map.tiles[tileId];
-				if (Path.startTile.id == Path.goalTile.id) {
+				Path.goalTile = tileId;
+				if (Path.startTile == Path.goalTile) {
 					Path.goalTile = null;
 					Path.touchLayerClicked = 1;
 				} else {
@@ -440,171 +480,123 @@ var Path = {
 		});
 
 	},
-	startPathFinder: function () {
-		Path.doneHex = [];
-		Path.nextHex = undefined;
-		Path.considerHex = {};
-		Path.foundGoal = false;
-
-		Path.drawCircleOnTouchLayer(Path.goalTile.points.m*Map.tileSize, Path.goalTile.points.my*Map.tileSize, 5, '#000000');
-		Path.dirAngle = Path.getAngle (Path.startTile.points.m, Path.startTile.points.my, Path.goalTile.points.m, Path.goalTile.points.my);
-
-		Path.nextHex = Path.startTile.id-1;
-		Path.progressTile(Path.nextHex);
-	},
-	getTileBy2Dcord: function (pxr, pxq) {
-		var xArr = Map.tileCentersObjX[pxr];
-		var yArr = Map.tileCentersObjY[pxq];
-		var i = 0;
-		var j = 0;
-		var len1 = xArr.length;
-		var len2 = yArr.length;
-		for (i=0; i<len1; i++) {
-			for (j=0; j<len2; j++) {
-				if (xArr[i] == yArr[j]) {
-					return xArr[i];
-				}
-			}
-		}
-	},
-	getAngle: function (mx1, my1, mx2, my2) {
-		var dx = Math.abs(mx1 - mx2);
-		var dy = Math.abs(my1 - my2);
-		var theta = Math.atan2(dx, dy);
-		theta *= 180 / Math.PI;
-		theta = Math.round(theta);
-		return theta;
-	},
-	progressTile: function (arrId) {
-		var thisTile = Map.tiles[arrId];
-		var neighborId = null;
-		var i = 0;
-		var j = 0;
+	startPathFinder: function () { // http://www.briangrinstead.com/blog/astar-search-algorithm-in-javascript
+		// Path.tiles includes objects with data neighbors, x, y, g, d
+		// Path.open and Path.closed include ids to Path.tiles
+		var d = null;
+		var lowInd = 0;
 		var len = 0;
 		var len2 = 0;
-		var neBo = [];
-		var neTile = null;
-		var distance = 0;
-		var next = null;
-		var passDone = true;
-		var prevHex = null;
+		var i = 0;
+		var j = 0;
+		var currentNode = null;
+		var curr = null;
+		var neighborId = null;
+		var pass = null;
+		var gScore = 0;
+		var gScoreIsBest = null;
 
-		if (thisTile.n_lb) { neBo.push(thisTile.n_lb); }
-		if (thisTile.n_ll) { neBo.push(thisTile.n_ll); }
-		if (thisTile.n_lu) { neBo.push(thisTile.n_lu); }
-		if (thisTile.n_rb) { neBo.push(thisTile.n_rb); }
-		if (thisTile.n_rr) { neBo.push(thisTile.n_rr); }
-		if (thisTile.n_ru) { neBo.push(thisTile.n_ru); }
+		d = Path.tileDistance({x:Map.tiles[Path.startTile].points.m,y:Map.tiles[Path.startTile].points.my}, {x:Map.tiles[Path.goalTile].points.m,y:Map.tiles[Path.goalTile].points.my});
+		Path.tiles[Path.startTile].g = 0;
+		Path.tiles[Path.startTile].d = d;
+		Path.open.push(Path.startTile);
 
-		Path.drawCircleOnTouchLayer(thisTile.points.m*Map.tileSize, thisTile.points.my*Map.tileSize, 5, '#FF9100');
+		while(Path.open.length > 0) {
 
-		len = neBo.length;
-		for (i; i < len; i++) {
-			passDone = true;
-			neTile = Map.tiles[neBo[i]-1];
-			if (typeof Path.considerHex[neBo[i]-1] == 'undefined') {
-
-				len2 = Path.doneHex.length;
-				j = 0;
-				for (j; j<len2; j++) {
-					if (neTile.id == Path.doneHex[j]) {
-						passDone = false;
-					}
-				}
-
-				if (passDone) {
-					distance = Path.tileDistance({x:neTile.points.m,y:neTile.points.my}, {x:Path.goalTile.points.m,y:Path.goalTile.points.my});
-					Map.tiles[neBo[i]-1].pathCameFrom = arrId;
-					Path.considerHex[neBo[i]-1] = {d:distance};
-
-					if (neTile.id == Path.goalTile.id) {
-
-						prevHex = Path.goalTile.id-1;
-
-						while (Map.tiles[prevHex].pathCameFrom != Path.startTile.id-1) {
-							prevHex = Map.tiles[prevHex].pathCameFrom;
-							Path.drawCircleOnTouchLayer(Map.tiles[prevHex].points.m*Map.tileSize, Map.tiles[prevHex].points.my*Map.tileSize, 5, '#FF0000');
-						}
-
-						Path.foundGoal = true;
-					} else {
-						Path.drawCircleOnTouchLayer(neTile.points.m*Map.tileSize, neTile.points.my*Map.tileSize, 5, '#FFEA00');
-					}
-				}
-
+			// Grab the lowest f(x) to process next
+			lowInd = 0;
+			len = Path.open.length;
+			for (i=0; i<len; i++) {
+				if(Path.tiles[Path.open[i]].f < Path.tiles[Path.open[lowInd]].f) { lowInd = i; }
 			}
+			currentNode = Path.open[lowInd];
+
+			// End case -- result has been found, return the traced path
+			if (currentNode == Path.goalTile) {
+
+				curr = Path.tiles[currentNode];
+				while(typeof curr.parent != 'undefined') {
+					Path.drawCircleOnTouchLayer(Path.tiles[curr.parent].x*Map.tileSize, Path.tiles[curr.parent].y*Map.tileSize, 5, '#FF9100'); // orange
+					curr = Path.tiles[curr.parent];
+				}
+
+				Path.resetPathfinder();
+
+				return;
+			}
+
+			// Normal case -- move currentNode from open to closed, process each of its neighbors
+			Path.open.splice(Path.open.indexOf(currentNode), 1);
+			Path.closed.push(currentNode);
+			Path.drawCircleOnTouchLayer(Path.tiles[currentNode].x*Map.tileSize, Path.tiles[currentNode].y*Map.tileSize, 5, '#FFFF00'); // yellow
+			len = Path.tiles[currentNode].neighbors.length;
+			neighborId = null;
+
+			for (i=0; i<len;i++) {
+				neighborId = Path.tiles[currentNode].neighbors[i];
+
+				// don't rerun closed
+				len2 = Path.closed.length;
+				pass = true;
+				for (j = 0; j<len2; j++) {
+					if (neighborId == Path.closed[j]) {
+						pass = false;
+					}
+				}
+				if (pass == false) {
+					continue;
+				}
+
+				// g score is the shortest distance from start to current node, we need to check if
+				//	 the path we have arrived at this neighbor is the shortest one we have seen yet
+				gScore = Path.tiles[currentNode].g + 1; // 1 is the distance from a node to it's neighbor
+				gScoreIsBest = false;
+
+				len2 = Path.open.length;
+				pass = false;
+				for (j=0; j<len2; j++) {
+					if (neighborId == Path.open[j]) {
+						pass = true;
+					}
+				}
+				if (pass == false) {
+					gScoreIsBest = true;
+					d = Path.tileDistance({x:Path.tiles[neighborId].x,y:Path.tiles[neighborId].y}, {x:Map.tiles[Path.goalTile].points.m,y:Map.tiles[Path.goalTile].points.my});
+					Path.tiles[neighborId].d = d;
+					Path.open.push(neighborId);
+				} else if (gScore < Path.tiles[neighborId].g) {
+					// We have already seen the node, but last time it had a worse g (distance from start)
+					gScoreIsBest = true;
+				}
+				if (gScoreIsBest) {
+					// Found an optimal (so far) path to this node
+					Path.tiles[neighborId].parent = currentNode;
+					Path.tiles[neighborId].g = gScore;
+					Path.tiles[neighborId].f = Path.tiles[neighborId].g + Path.tiles[neighborId].d;
+				}
+			}
+
 		}
 
-		Path.findPrioHex();
-		Path.doneHex.push(thisTile.id);
-
-		if (typeof Path.nextHex == 'undefined') {
-			console.log('error. no next tile');
-			Path.touchLayerClicked = 0;
-			Path.initClick = false;
-		} else if (Path.foundGoal) {
-			console.log('found goal');
-		} else {
-			Path.progressTile(Path.nextHex);
+	},
+	resetPathfinder: function () {
+		var i = 0;
+		var len = Path.tiles.length;
+		for (i=0; i<len; i++) {
+			delete Path.tiles[i]['g'];
+			delete Path.tiles[i]['d'];
+			delete Path.tiles[i]['f'];
+			delete Path.tiles[i]['parent'];
 		}
-
+		// Path.initClick = false;
+		Path.open = [];
+		Path.closed = [];
 	},
 	drawCircleOnTouchLayer: function (x, y, r, c) {
 		Map.touchLayer.beginPath();
 		Map.touchLayer.arc(x, y, r, 0, 2 * Math.PI, false);
 		Map.touchLayer.fillStyle = c;
 		Map.touchLayer.fill();
-	},
-	findPrioHex: function () {
-		var i = 0;
-		var len = null;
-		var arr = [];
-		var bestPrio = null;
-		var conArr = [];
-		var thetaArr = [];
-		var angle = null;
-		var curr = null;
-		var choosen = null;
-		var diff = null;
-
-		// what is the best distance?
-		Object.keys(Path.considerHex).forEach(function(k, i) {
-			arr.push(Path.considerHex[k].d);
-		});
-		bestPrio = Math.min.apply( Math, arr );
-		Object.keys(Path.considerHex).forEach(function(k, i) {
-			if (Path.considerHex[k].d == bestPrio) {
-				conArr.push(k);
-			}
-		});
-
-		// what is the best angle?
-		len = conArr.length;
-		if (len == 0) { // this is here at the moment
-			Path.nextHex = undefined;
-			return;
-		}
-		i = 0;
-		for (i; i<len; i++) {
-			angle = Path.getAngle (Map.tiles[conArr[i]].points.m, Map.tiles[conArr[i]].points.my, Path.goalTile.points.m, Path.goalTile.points.my);
-			thetaArr.push({hexId: conArr[i], angle: angle});
-		}
-		curr = thetaArr[0].angle;
-		choosen = thetaArr[0].hexId;
-		diff = Math.abs (Path.dirAngle - curr);
-		i = 0;
-		for (i; i < len; i++) {
-		  var newdiff = Math.abs (Path.dirAngle - thetaArr[i].angle);
-		  if (newdiff < diff) {
-		    diff = newdiff;
-		    curr = thetaArr[i].angle;
-		    choosen = thetaArr[i].hexId;
-		  }
-		}
-
-		Path.nextHex = choosen;
-		delete Path.considerHex[choosen];
-
 	},
 	tileDistance: function(a, b) { // euclidean distance
 		return Math.round(Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)));
