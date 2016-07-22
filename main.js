@@ -114,7 +114,11 @@ var Map = {
 			Path.tiles[i] = {
 				neighbors: neighbors,
 				x: tiles[i].points.m,
-				y: tiles[i].points.my
+				y: tiles[i].points.my,
+				height: tiles[i].height,
+			}
+			if (tiles[i].type == 1) {
+				Path.tiles[i].water = true;
 			}
 
 			pxr = stringifyCord(tiles[i].points.m*Map.tileSize);
@@ -516,7 +520,7 @@ var Path = {
 
 				curr = Path.tiles[currentNode];
 				while(typeof curr.parent != 'undefined') {
-					Path.drawCircleOnTouchLayer(Path.tiles[curr.parent].x*Map.tileSize, Path.tiles[curr.parent].y*Map.tileSize, 5, '#FF9100'); // orange
+					Path.drawCircleOnTouchLayer(Path.tiles[curr.parent].x*Map.tileSize, Path.tiles[curr.parent].y*Map.tileSize, 5, '#000000'); // #FF9100 orange
 					curr = Path.tiles[curr.parent];
 				}
 
@@ -528,7 +532,12 @@ var Path = {
 			// Normal case -- move currentNode from open to closed, process each of its neighbors
 			Path.open.splice(Path.open.indexOf(currentNode), 1);
 			Path.closed.push(currentNode);
-			Path.drawCircleOnTouchLayer(Path.tiles[currentNode].x*Map.tileSize, Path.tiles[currentNode].y*Map.tileSize, 5, '#FFFF00'); // yellow
+
+			if (Path.tiles[currentNode].water || Path.tiles[currentNode].height == '5') {
+				continue;
+			}
+
+			// Path.drawCircleOnTouchLayer(Path.tiles[currentNode].x*Map.tileSize, Path.tiles[currentNode].y*Map.tileSize, 5, '#FFFF00'); // yellow
 			len = Path.tiles[currentNode].neighbors.length;
 			neighborId = null;
 
@@ -549,7 +558,9 @@ var Path = {
 
 				// g score is the shortest distance from start to current node, we need to check if
 				//	 the path we have arrived at this neighbor is the shortest one we have seen yet
-				gScore = Path.tiles[currentNode].g + 1; // 1 is the distance from a node to it's neighbor
+				// console.log(Path.tiles[currentNode].g + 1, parseInt(Path.tiles[currentNode].height));
+
+				gScore = Path.tiles[currentNode].g + 1; // parseInt(Path.tiles[currentNode].height)
 				gScoreIsBest = false;
 
 				len2 = Path.open.length;
@@ -571,7 +582,7 @@ var Path = {
 				if (gScoreIsBest) {
 					// Found an optimal (so far) path to this node
 					Path.tiles[neighborId].parent = currentNode;
-					Path.tiles[neighborId].g = gScore;
+					Path.tiles[neighborId].g = gScore + parseInt(Path.tiles[currentNode].height) * 10;
 					Path.tiles[neighborId].f = Path.tiles[neighborId].g + Path.tiles[neighborId].d;
 				}
 			}
