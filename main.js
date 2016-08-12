@@ -10,6 +10,7 @@ var App = {
 	init: function (mapData) {
 		Map.init(mapData);
 		Path.init();
+		Sock.connect2Server();
 	}
 }
 
@@ -80,13 +81,17 @@ var Map = {
 
 		Map.c = document.getElementById('map').getContext('2d');
 		Map.touchLayer = document.getElementById('touch').getContext('2d');
+		Map.unitLayer = document.getElementById('units').getContext('2d');
 		var c = Map.c;
 		c.canvas.width = mapW;
 		c.canvas.height = mapH;
 		Map.touchLayer.canvas.width = mapW;
 		Map.touchLayer.canvas.height = mapH;
+		Map.unitLayer.canvas.width = mapW;
+		Map.unitLayer.canvas.height = mapH;
 		c.translate(-mapVPx, -mapVPy);
 		Map.touchLayer.translate(-mapVPx, -mapVPy);
+		Map.unitLayer.translate(-mapVPx, -mapVPy);
 
 		var len = map.tiles;
 		var i = 0;
@@ -244,7 +249,7 @@ var Map = {
 		}
 
 	},
-	tileSize: 3,
+	tileSize: 2,
 	tiles: [],
 	tileCentersObjX: {},
 	tileCentersObjY: {},
@@ -321,6 +326,42 @@ var Map = {
 
 		}
 	},
+	drawUnits: function (units) {
+		var len = units.length;
+		var i = 0;
+		var tileId = null;
+		var points = null;
+		var c = null;
+		var size = null;
+		var imgXsize = null;
+		var imgYsize = null;
+
+		var img = new Image();
+
+		Map.unitLayer.save();
+		Map.unitLayer.setTransform(1, 0, 0, 1, 0, 0);
+		Map.unitLayer.clearRect(0,0,Map.unitLayer.canvas.width,Map.unitLayer.canvas.height);
+		Map.unitLayer.restore();
+
+		img.onload = function () {
+			for (i; i<len; i++) {
+				tileId = units[i].tile_pos;
+				
+				points = Map.tiles[tileId].points;
+				c = Map.c;
+				size = Map.tileSize;
+
+				// 1:5 2:4
+				imgXsize = 35 / 3.5;
+				imgYsize = 46 / 3.5;
+
+				Map.unitLayer.drawImage( img, points.m*size - (imgXsize / 2), points.b*size - (imgYsize / 2), imgXsize, imgYsize );
+				
+			}
+		}
+		img.setAttribute('src', 'thug-front.png');
+
+	},
 	help: {
 		drawTileById: function (id) {
 
@@ -385,6 +426,81 @@ var XML = {
 		// xhr.setRequestHeader('Content-length', params.length);
 		xhr.send(params);
 		return xhr;
+	}
+}
+
+var Sock = {
+	// settings
+	serverHost: window.location.host, // automatically retrieved from the URL
+	serverPort: 64341,
+	usernameMaxLength: 18,
+	
+	// internal variables
+	socket: false,
+	connected: false,
+
+	connect2Server: function() {
+		if (Sock.isConnected()) {
+			// already connected to the server, so disconnect from the server
+			console.log("already connected to the server, so disconnect from the server");
+			Sock.disconnect();
+			return;
+		}
+
+		console.log('Connecting..');
+		Sock.connect();
+	},
+	
+	// server connection
+	isConnected: function() {
+		return Sock.connected;
+	},
+	connect: function() {
+		var Socket = new WebSocket('ws://'+Sock.serverHost+':'+Sock.serverPort);
+		Sock.setSocketEvents(Socket);
+		Sock.socket = Socket;
+	},
+	disconnect: function() {
+		Sock.socket.send('QUIT');
+		Sock.socket.close();
+	},
+	
+	// socket events
+	setSocketEvents: function(Socket) {
+		Socket.onopen = function() {
+			// now connected to the server
+			Sock.connected = true;
+			console.log('Connected.');
+		}
+		
+		Socket.onmessage = function(Message) {
+			var Data = Message.data;
+
+			try {
+				var json = JSON.parse(Data);
+			} catch(e) {
+				// console.log('invalid json');
+			}
+
+			if (typeof json != 'undefined') {
+				Map.drawUnits(json.units);
+				document.getElementById('day-display').innerHTML = "It's the day "+json.day+".";
+				// console.log("A new day arose: "+json.day);
+				return;
+			}
+		}
+		
+		Socket.onclose = function() {
+			if (Sock.connected) {
+				// was connected to server before onclose was called
+				console.log('Disconnected.');
+			} else {
+				// was not connected to server before onclose was called
+				console.log('Failed to connect.');
+			}
+			Sock.connected = false;
+		}
+
 	}
 }
 
@@ -563,9 +679,9 @@ var Path = {
 
 				height = parseInt(Path.tiles[currentNode].height);
 				if (height == 1) { height = 1; } else
-				if (height == 2) { height = 5; } else
-				if (height == 3) { height = 15; } else
-				if (height == 4) { height = 40; }
+				if (height == 2) { height = 15; } else
+				if (height == 3) { height = 40; } else
+				if (height == 4) { height = 100; }
 
 				gScore = Path.tiles[currentNode].g + height; // parseInt(Path.tiles[currentNode].height)
 				gScoreIsBest = false;
