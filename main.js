@@ -1,27 +1,19 @@
 "use strict";
 
 window.onload = function () {
-	XML.get( 'export.php?f', App.init );
+	Sock.connect2Server();
 	console.log('build(); corrugate(); irrigate();');
-	console.log('under maintenance');
-}
-
-var App = {
-	init: function (mapData) {
-		Map.init(mapData);
-		Path.init();
-		Sock.connect2Server();
-	}
+	// console.log('under maintenance');
 }
 
 function build () {
-	XML.get( 'export.php?b', Map.init );
+	Sock.socket.send('BUILD');
 }
 function corrugate () {
-	XML.get( 'export.php?c', Map.init );
+	Sock.socket.send('CORRUGATE');
 }
 function irrigate () {
-	XML.get( 'export.php?w', Map.init );
+	Sock.socket.send('IRRIGATE');
 }
 
 function closestTo (number, set) {
@@ -93,7 +85,7 @@ var Map = {
 		Map.touchLayer.translate(-mapVPx, -mapVPy);
 		Map.unitLayer.translate(-mapVPx, -mapVPy);
 
-		var len = map.tiles;
+		var len = tiles.length;
 		var i = 0;
 		var tile = null;
 		var points = null;
@@ -103,6 +95,8 @@ var Map = {
 		var neighbors = [];
 		for (i; i<len; i++) {
 			tile = tiles[i];
+
+			// console.log(i);
 
 			points = tile.points;
 			height = tile.height;
@@ -209,6 +203,7 @@ var Map = {
 			}
 		}
 		Map.drawRivers();
+		Map.drawPortals();
 
 		var qc = mapW / Map.hp.r;
 		var rc = (mapH - Map.hp.b) / Map.hp.c;
@@ -237,10 +232,19 @@ var Map = {
 				toX = j*Map.hp.r+add+Map.hp.m;
 				toY = i*Map.hp.c-2.5*Map.tileSize;
 
-				if (add) { // even
-					Map.tileCentersXE.push(toX);
+				if (add) {
+					if (qc % 1 == 0) { // add even
+						Map.tileCentersXE.push(toX);
+					} else {  // add odd
+						Map.tileCentersXO.push(toX);
+					}
 				} else {
-					Map.tileCentersXO.push(toX);
+
+					if (qc % 1 == 0) { // !add even
+						Map.tileCentersXO.push(toX);
+					} else { // !add odd
+						Map.tileCentersXE.push(toX);
+					}
 				}
 				Map.tileCentersY.push(toY);
 				
@@ -249,7 +253,7 @@ var Map = {
 		}
 
 	},
-	tileSize: 2,
+	tileSize: 4,
 	tiles: [],
 	tileCentersObjX: {},
 	tileCentersObjY: {},
@@ -326,6 +330,34 @@ var Map = {
 
 		}
 	},
+	drawPortals: function () {
+		var points = null;
+		var c = Map.c;
+		var size = Map.tileSize;
+		var i = 0;
+		var len = Map.tiles.length;
+		for (i; i<len; i++) {
+			if (Map.tiles[i].portal != null) {
+				// console.log(Map.tiles[i]);
+
+				points = Map.tiles[Map.tiles[i].id].points;
+				c = Map.c;
+				size = Map.tileSize;
+				c.fillStyle = '#00FFE6';
+
+				c.beginPath();
+				c.moveTo(points.m*size, points.a*size);
+				c.lineTo(points.l*size, points.b*size);
+				c.lineTo(points.l*size, points.c*size);
+				c.lineTo(points.m*size, points.d*size);
+				c.lineTo(points.r*size, points.c*size);
+				c.lineTo(points.r*size, points.b*size);
+				c.closePath();
+				c.fill();
+
+			}
+		}
+	},
 	drawUnits: function (units) {
 		var len = units.length;
 		var i = 0;
@@ -335,7 +367,6 @@ var Map = {
 		var size = null;
 		var imgXsize = null;
 		var imgYsize = null;
-
 		var img = new Image();
 
 		Map.unitLayer.save();
@@ -346,14 +377,16 @@ var Map = {
 		img.onload = function () {
 			for (i; i<len; i++) {
 				tileId = units[i].tile_pos;
+
+				if (typeof Map.tiles[tileId] == 'undefined') { continue; }
 				
 				points = Map.tiles[tileId].points;
 				c = Map.c;
 				size = Map.tileSize;
 
-				// 1:5 2:4
-				imgXsize = 35 / 3.5;
-				imgYsize = 46 / 3.5;
+				// 1:5 2:4 4:1.4
+				imgXsize = 35 / 1.4;
+				imgYsize = 46 / 1.4;
 
 				Map.unitLayer.drawImage( img, points.m*size - (imgXsize / 2), points.b*size - (imgYsize / 2), imgXsize, imgYsize );
 				
@@ -399,40 +432,10 @@ var Map = {
 	}
 }
 
-var XML = {
-	console: function (data) {
-		if (console) {console.log(data)};
-	},
-	xhr: function (method, url, success) {
-		var xhr = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-		xhr.open(method, url);
-		xhr.onreadystatechange = function() {
-		  if (xhr.readyState>3 && xhr.status==200) success(xhr.responseText);
-		};
-		xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-		return xhr;
-	},
-	get: function (url, success) {
-		var xhr = XML.xhr('GET', url, success);
-		xhr.send();
-		return xhr;
-	},
-	post: function (url, data, success) {
-		var params = typeof data == 'string' ? data : Object.keys(data).map(
-			function(k){ return encodeURIComponent(k) + '=' + encodeURIComponent(data[k]) }
-		).join('&');
-		var xhr = XML.xhr('POST', url, success);
-		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-		// xhr.setRequestHeader('Content-length', params.length);
-		xhr.send(params);
-		return xhr;
-	}
-}
-
 var Sock = {
 	// settings
 	serverHost: window.location.host, // automatically retrieved from the URL
-	serverPort: 64341,
+	serverPort: 63848,
 	usernameMaxLength: 18,
 	
 	// internal variables
@@ -457,7 +460,7 @@ var Sock = {
 	},
 	connect: function() {
 		var Socket = new WebSocket('ws://'+Sock.serverHost+':'+Sock.serverPort);
-		Sock.setSocketEvents(Socket);
+		Sock.setEvents(Socket);
 		Sock.socket = Socket;
 	},
 	disconnect: function() {
@@ -466,28 +469,32 @@ var Sock = {
 	},
 	
 	// socket events
-	setSocketEvents: function(Socket) {
+	setEvents: function(Socket) {
 		Socket.onopen = function() {
 			// now connected to the server
 			Sock.connected = true;
-			console.log('Connected.');
+			console.log('Connected');
+			// retrieve map data
+			// Sock.socket.send('MAP');
 		}
 		
 		Socket.onmessage = function(Message) {
 			var Data = Message.data;
 
-			try {
-				var json = JSON.parse(Data);
-			} catch(e) {
-				// console.log('invalid json');
+			var json = JSON.parse(Data);
+			
+			if (typeof json.msg != 'undefined') {
+				if (json.msg == 'NOACCESS') {
+					console.log('No Access');
+				} else if (json.msg == 'MAP') {
+					Map.init(Data);
+					Path.init();
+				} else if (json.msg == 'TURN') {
+					Map.drawUnits(json.units);
+					document.getElementById('day-display').innerHTML = "It's the day "+json.day+".";					
+				}
 			}
 
-			if (typeof json != 'undefined') {
-				Map.drawUnits(json.units);
-				document.getElementById('day-display').innerHTML = "It's the day "+json.day+".";
-				// console.log("A new day arose: "+json.day);
-				return;
-			}
 		}
 		
 		Socket.onclose = function() {
@@ -500,6 +507,18 @@ var Sock = {
 			}
 			Sock.connected = false;
 		}
+
+		document.getElementById('login-btn').addEventListener('click', function(e) {
+			var pw = document.getElementById('login-password').value;
+			var hashed = MD5(pw);
+			var username = document.getElementById('login-username').value;
+			var user = {
+				'pw': hashed,
+				'username': username
+			}
+			user = JSON.stringify(user);
+			Sock.socket.send('USER::'+user);
+		});
 
 	}
 }
@@ -527,21 +546,8 @@ var Path = {
 			// 	console.log(data[key]);
 			// });
 
-			var rect = document.getElementById('touch').getBoundingClientRect();
-			var x = e.clientX - rect.left;
-			var y = e.clientY - rect.top;
-
-			var closestY = closestTo(y, Map.tileCentersY);
-			if (Math.floor(closestY / Map.hp.c) % 2 ) { // TODO something does sometimes not work out here
-				var closestX = closestTo(x, Map.tileCentersXO);
-			} else {
-				var closestX = closestTo(x, Map.tileCentersXE);
-			}
-
-			var q = closestX+Map.mapVPx;
-			var r = closestY+Map.mapVPy;
-
-			var tileId = Map.getTileBy2Dcord(stringifyCord(r), stringifyCord(q));
+			var clickedTile = Path.findClickedTile(e);
+			var tileId = clickedTile.tileId;
 
 			Map.touchLayer.save();
 			Map.touchLayer.setTransform(1, 0, 0, 1, 0, 0);
@@ -556,7 +562,7 @@ var Path = {
 				return;
 			}
 
-			Path.drawCircleOnTouchLayer(q, r, 5, '#000000');
+			Path.drawCircleOnTouchLayer(clickedTile.q, clickedTile.r, Map.tileSize+1, '#000000');
 
 			Path.touchLayerClicked++;
 			if (Path.touchLayerClicked == 1) {
@@ -586,6 +592,7 @@ var Path = {
 				}
 			}
 
+
 			// Map.touchLayer.beginPath();
 			// Map.touchLayer.moveTo(q-Map.hp.m, r-(2.5*Map.tileSize));
 			// Map.touchLayer.lineTo(q, r-(4.5*Map.tileSize));
@@ -598,7 +605,67 @@ var Path = {
 			// Map.touchLayer.fill();
 			// Map.touchLayer.closePath;
 		});
+		document.getElementById('touch').oncontextmenu = function (e) {
+			var clickedTile = Path.findClickedTile(e);
+			var tileId = clickedTile.tileId;
 
+			e.preventDefault();
+			if (!tileId) { return; }
+
+			if (Path.rightClickLastId == tileId) {
+				document.getElementById('right-click-menu').style.display = 'none';
+				Path.rightClickLastId = undefined;
+				return;
+			} else if (typeof Path.rightClickLastId == 'undefined' || Path.rightClickLastId != tileId) {
+				document.getElementById('right-click-menu').style.display = 'block';
+				Path.rightClickLastId = tileId;
+			}
+
+			var x = clickedTile.q + Math.abs(Map.mapVPx);
+			var y = clickedTile.r + Math.abs(Map.mapVPy);
+			var html = '';
+
+			if (Map.tiles[tileId-1].portal) {
+				x -= 66.5;
+				html += '<ul>';
+					html += '<li>Enter portal</li>';
+					html += '<li>Destroy portal</li>';
+				html += '</ul>';
+			} else {
+				x -= 63;
+				html += '<ul>';
+					html += '<li>Create portal</li>';
+				html += '</ul>';
+			}
+
+			y += 14;
+
+			document.getElementById('right-click-menu').style.left = x+'px';
+			document.getElementById('right-click-menu').style.top = y+'px';
+			document.getElementById('right-click-menu').innerHTML = html;
+
+			// Path.drawCircleOnTouchLayer(clickedTile.q, clickedTile.r, Map.tileSize+1, '#000000');
+
+		}
+
+	},
+	findClickedTile: function (e) {
+		var rect = document.getElementById('touch').getBoundingClientRect();
+		var x = e.clientX - rect.left;
+		var y = e.clientY - rect.top;
+		
+		var closestY = closestTo(y, Map.tileCentersY);
+		if (Math.floor(closestY / Map.hp.c) % 2 ) { // TODO something does sometimes not work out here
+			var closestX = closestTo(x, Map.tileCentersXO);
+		} else {
+			var closestX = closestTo(x, Map.tileCentersXE);
+		}
+
+		var q = closestX+Map.mapVPx;
+		var r = closestY+Map.mapVPy;
+
+		var tileId = Map.getTileBy2Dcord(stringifyCord(r), stringifyCord(q));
+		return {q:q, r:r, tileId:tileId}
 	},
 	startPathFinder: function () { // http://www.briangrinstead.com/blog/astar-search-algorithm-in-javascript
 		// Path.tiles includes objects with data neighbors, x, y, g, d
@@ -637,7 +704,7 @@ var Path = {
 
 				curr = Path.tiles[currentNode];
 				while(typeof curr.parent != 'undefined') {
-					Path.drawCircleOnTouchLayer(Path.tiles[curr.parent].x*Map.tileSize, Path.tiles[curr.parent].y*Map.tileSize, 5, '#000000'); // #FF9100 orange
+					Path.drawCircleOnTouchLayer(Path.tiles[curr.parent].x*Map.tileSize, Path.tiles[curr.parent].y*Map.tileSize, Map.tileSize+1, '#000000'); // #FF9100 orange
 					curr = Path.tiles[curr.parent];
 				}
 
