@@ -16,21 +16,42 @@ function irrigate () {
 	Sock.socket.send('IRRIGATE');
 }
 
-function closestTo (number, set) {
+function closestTo (number, set, ignore) {
 	var closest = set[0];
 	var prev = Math.abs(set[0] - number);
 
 	for (var i = 1; i < set.length; i++) {
 		var diff = Math.abs(set[i] - number);
 
-		if (diff < prev) {
-			prev = diff;
-			closest = set[i];
+		if (set[i] != ignore) {
+			if (diff < prev) {
+				prev = diff;
+				closest = i; // set[i]
+			}
 		}
 	}
 
 	return closest;
 }
+
+var insidePolygon = function (point, vs) {
+	// ray-casting algorithm based on
+	// http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
+
+	var x = point[0], y = point[1];
+
+	var inside = false;
+	for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+		var xi = vs[i][0], yi = vs[i][1];
+		var xj = vs[j][0], yj = vs[j][1];
+
+		var intersect = ((yi > y) != (yj > y))
+			&& (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+		if (intersect) inside = !inside;
+	}
+
+	return inside;
+};
 
 function stringifyCord (px) {
 	var way = null;
@@ -59,6 +80,15 @@ var Map = {
 		var mapVPy = map.u*size;
 		Map.mapVPx = mapVPx;
 		Map.mapVPy = mapVPy;
+		Map.mapW = mapW;
+		Map.mapH = mapH;
+
+		Map.tiles = [];
+		Map.tileCentersObjX = {};
+		Map.tileCentersObjY = {};
+		Map.tileCentersXE = [];
+		Map.tileCentersXO = [];
+		Map.tileCentersY = [];
 
 		// hex points
 		Map.hp = {
@@ -66,7 +96,8 @@ var Map = {
 			m: 4 * Map.tileSize,
 			c: 7 * Map.tileSize,
 			r: 8 * Map.tileSize,
-			d: 9 * Map.tileSize
+			d: 9 * Map.tileSize,
+			s: 5 * Map.tileSize
 		}
 
 		Map.tiles = tiles;
@@ -90,16 +121,21 @@ var Map = {
 		var tile = null;
 		var points = null;
 		var height = null;
+		var cord = null;
 		var pxr = null;
 		var pxq = null;
 		var neighbors = [];
 		for (i; i<len; i++) {
 			tile = tiles[i];
 
-			// console.log(i);
-
 			points = tile.points;
 			height = tile.height;
+			cord = tile.cord;
+			// cord = cord.match(/.[0-9]+/g);
+			// cord = cord.split(/[^\w\s]/gi);
+			// "-2".match(/.{1,1}/g)
+
+			// tiles[i].r = cord[2];
 
 			tiles[i].points.my = points.b+(points.c-points.b)/2;
 
@@ -120,8 +156,14 @@ var Map = {
 				Path.tiles[i].water = true;
 			}
 
-			pxr = stringifyCord(tiles[i].points.m*Map.tileSize);
-			pxq = stringifyCord(tiles[i].points.my*Map.tileSize);
+			pxr = tiles[i].points.m*Map.tileSize;
+			pxq = tiles[i].points.my*Map.tileSize;
+			var middleX = points.l*size - Map.mapVPx + Map.hp.m;
+			var middleY = points.a*size - Map.mapVPy + Map.hp.m;
+			pxr = middleY;
+			pxq = middleX;
+			Map.tileCentersX.push(middleX);
+			Map.tileCentersY.push(middleY);
 
 			if(Map.tileCentersObjY.hasOwnProperty(pxr)){
 				Map.tileCentersObjY[pxr].push(i);
@@ -151,6 +193,7 @@ var Map = {
 				c.fillStyle = "#99ddff";
 			}
 
+
 			c.beginPath();
 			c.moveTo(points.m*size, points.a*size);
 			c.lineTo(points.l*size, points.b*size);
@@ -163,7 +206,12 @@ var Map = {
 
 			// c.font = "8px Arial";
 			// c.fillStyle = '#000';
-			// c.fillText(tile.cord,points.l*size,points.c*size);
+			// c.fillText(tile.cord,points.l*size,(points.my-1)*size);
+
+			// c.beginPath();
+			// c.rect(points.m*size-2.5,points.my*size-2.5,5,5);
+			// c.fill();
+			// c.closePath;
 
 			if (tile.is_river) {
 
@@ -202,23 +250,94 @@ var Map = {
 
 			}
 		}
+
 		Map.drawRivers();
 		Map.drawPortals();
 
-		var qc = mapW / Map.hp.r;
-		var rc = (mapH - Map.hp.b) / Map.hp.c;
+		// console.log(Map.tiles[Map.mapMeasure.idY]);
+		// Map.help.drawTileById(Map.mapMeasure.idY);
+		// var ooo = Map.tiles[Map.mapMeasure.idY].points.l * Map.tileSize;
+		// console.log(ooo, Map.mapW, Map.mapVPx);
 
 		// touching tiles
-		var i = 1;
-		var j = 1;
+		// var i = 1;
+		// var j = 1;
+		// var add = 0;
+		// var q = 0;
+		// var r = 0;
+		// var toX = null;
+		// var toY = null;
+
+		// for (i = 0; i <= rc; i++) {
+		// 	r = i*Map.hp.c+mapVPy-(2.5*Map.tileSize);
+
+		// 	if (add == 0) {
+		// 		add = Map.hp.m;
+		// 	} else {
+		// 		add = 0;
+		// 	}
+
+		// 	for (j = 0; j < qc; j++) {
+		// 		q = j*Map.hp.r+mapVPx+add+0.5+Map.hp.m;
+
+		// 		toX = j*Map.hp.r+add+Map.hp.m;
+		// 		toY = i*Map.hp.c-2.5*Map.tileSize;
+
+		// 		if (add) {
+		// 			if (qc % 1 == 0) { // add even
+		// 				Map.tileCentersXE.push(toX);
+		// 			} else {  // add odd
+		// 				Map.tileCentersXO.push(toX);
+		// 			}
+		// 		} else {
+
+		// 			if (qc % 1 == 0) { // !add even
+		// 				Map.tileCentersXO.push(toX);
+		// 			} else { // !add odd
+		// 				Map.tileCentersXE.push(toX);
+		// 			}
+		// 		}
+		// 		Map.tileCentersY.push(toY);
+
+		// 		Map.c.beginPath();
+		// 		Map.c.rect(toX-2.5,toY-2.5,5,5);
+		// 		Map.c.fill();
+		// 		Map.c.closePath;
+				
+
+		// 	}
+		// }
+		// Map.touchLayerInit(0);
+
+	},
+	touchLayerInit: function (forceNegOnset) {
+
+		var dd = Math.abs(Map.tiles[0].points.m*Map.tileSize);
+		var aa = Math.abs(Map.tiles[0].points.my*Map.tileSize);
+		var qc = Map.mapW / Map.hp.r;
+		var rc = (Map.mapH - Map.hp.b) / Map.hp.c;
+		var i = 0;
+		var j = 0;
 		var add = 0;
 		var q = 0;
 		var r = 0;
 		var toX = null;
 		var toY = null;
+		var pass = false;
 
-		for (i = 1; i <= rc; i++) {
-			r = i*Map.hp.c+mapVPy-(2.5*Map.tileSize);
+		Map.c.fillStyle = 'red';
+
+		if (forceNegOnset) {
+			Map.c.fillStyle = 'blue';
+			add = Map.hp.m;
+		}
+		// add = Map.hp.m;
+
+		Map.tileCentersXO = [];
+		Map.tileCentersXE = [];
+		Map.tileCentersY = [];
+
+		for (i = 0; i <= rc; i++) {
 
 			if (add == 0) {
 				add = Map.hp.m;
@@ -226,32 +345,50 @@ var Map = {
 				add = 0;
 			}
 
-			for (j = 0; j < qc; j++) {
-				q = j*Map.hp.r+mapVPx+add+0.5+Map.hp.m;
+			for (j = 0; j <= qc; j++) {
 
-				toX = j*Map.hp.r+add+Map.hp.m;
+				toX = j*Map.hp.r+add;
 				toY = i*Map.hp.c-2.5*Map.tileSize;
 
-				if (add) {
-					if (qc % 1 == 0) { // add even
-						Map.tileCentersXE.push(toX);
-					} else {  // add odd
-						Map.tileCentersXO.push(toX);
-					}
-				} else {
-
-					if (qc % 1 == 0) { // !add even
-						Map.tileCentersXO.push(toX);
-					} else { // !add odd
-						Map.tileCentersXE.push(toX);
-					}
+				if (dd == toX && aa == toY) { // ugly hack ^^ will be redundant in future
+					console.log(8);
+					pass = true;
 				}
-				Map.tileCentersY.push(toY);
-				
 
+				if (add) {
+					Map.tileCentersXE.push(toX);
+				} else {
+					Map.tileCentersXO.push(toX);
+				}
+
+				Map.tileCentersY.push(toY);
+
+				Map.c.beginPath();
+				Map.c.rect(toX+Map.mapVPx-2.5,toY+Map.mapVPy-2.5,5,5);
+				Map.c.fill();
+				Map.c.closePath;
+				
 			}
 		}
 
+		if (!pass) {
+			console.log(5);
+			Map.negOnpos = false;
+			if (forceNegOnset == 1) {
+				console.log(4);
+				Map.touchLayerInit(1);
+			} else {
+				console.log(6);
+				Map.touchLayerInit(1);
+			}
+		} else {
+			Map.negOnpos = true;
+			console.log(9);
+			Map.touchLayerInit(1);
+		}
+
+		// Map.touchLayerInit(1);
+		// return;
 	},
 	tileSize: 4,
 	tiles: [],
@@ -259,6 +396,7 @@ var Map = {
 	tileCentersObjY: {},
 	tileCentersXE: [],
 	tileCentersXO: [],
+	tileCentersX: [],
 	tileCentersY: [],
 	c: null,
 	drawRiverArr: [],
@@ -398,7 +536,7 @@ var Map = {
 	help: {
 		drawTileById: function (id) {
 
-			var points = Map.tiles[id].points;
+			var points = Map.tiles[id-1].points;
 			var c = Map.c;
 			var size = Map.tileSize;
 			c.fillStyle = 'red';
@@ -415,9 +553,10 @@ var Map = {
 
 		}
 	},
-	getTileBy2Dcord: function (pxr, pxq) {
-		var xArr = Map.tileCentersObjX[pxr];
-		var yArr = Map.tileCentersObjY[pxq];
+	getTileBy2Dcord: function (qm, rm) {
+		var xArr = Map.tileCentersObjX[qm];
+		var yArr = Map.tileCentersObjY[rm];
+		// if (typeof yArr == 'undefined') { return; }
 		var i = 0;
 		var j = 0;
 		var len1 = xArr.length;
@@ -425,10 +564,11 @@ var Map = {
 		for (i=0; i<len1; i++) {
 			for (j=0; j<len2; j++) {
 				if (xArr[i] == yArr[j]) {
-					return xArr[i];
+					return xArr[i]+1;
 				}
 			}
 		}
+		return false;
 	}
 }
 
@@ -491,7 +631,9 @@ var Sock = {
 					Path.init();
 				} else if (json.msg == 'TURN') {
 					Map.drawUnits(json.units);
-					document.getElementById('day-display').innerHTML = "It's the day "+json.day+".";					
+					document.getElementById('day-display').innerHTML = "It's the day "+json.day+".";
+				} else if (json.msg == 'NOMAPGEN') {
+					console.log('A map build is currently in progress. Please wait.');
 				}
 			}
 
@@ -539,14 +681,29 @@ var Path = {
 	initClick: null,
 	tiles:[],
 	touchLayerClicked: 0,
+	eventsInitialized: 0,
 	init: function () {
 
+		Path.open = [];
+		Path.closed = [];
+		Path.startTile = null;
+		Path.goalTile = null;
+		Path.initClick = null;
+		Path.touchLayerClicked = 0;
+
+		if (Path.eventsInitialized == 0) {
+			Path.eventsInitialized = 1;
+		} else { return; }
+
 		document.getElementById('touch').addEventListener('click', function(e) {
+
+
 			// Object.keys(data).forEach(function (key) {
 			// 	console.log(data[key]);
 			// });
 
 			var clickedTile = Path.findClickedTile(e);
+			return;
 			var tileId = clickedTile.tileId;
 
 			Map.touchLayer.save();
@@ -628,7 +785,7 @@ var Path = {
 			if (Map.tiles[tileId-1].portal) {
 				x -= 66.5;
 				html += '<ul>';
-					html += '<li>Enter portal</li>';
+					html += '<li onclick="Path.enterPortal('+tileId+')">Enter portal</li>';
 					html += '<li>Destroy portal</li>';
 				html += '</ul>';
 			} else {
@@ -649,22 +806,122 @@ var Path = {
 		}
 
 	},
+	enterPortal: function (tileId) {
+		var move = {
+			'tileId': tileId
+		}
+		document.getElementById('right-click-menu').style.display = 'none';
+		Path.rightClickLastId = undefined;
+		move = JSON.stringify(move);
+		Sock.socket.send('GOTOMAP::'+move);
+	},
 	findClickedTile: function (e) {
 		var rect = document.getElementById('touch').getBoundingClientRect();
 		var x = e.clientX - rect.left;
 		var y = e.clientY - rect.top;
-		
-		var closestY = closestTo(y, Map.tileCentersY);
-		if (Math.floor(closestY / Map.hp.c) % 2 ) { // TODO something does sometimes not work out here
-			var closestX = closestTo(x, Map.tileCentersXO);
-		} else {
-			var closestX = closestTo(x, Map.tileCentersXE);
+		var closeX = null;
+		var closeY = null;
+		var chosen = null;
+
+		var i = 0;
+		var len = Map.tiles.length;
+
+		Map.touchLayer.beginPath();
+
+		for (i=0; i<len; i++) {
+			var m = Map.tiles[i].points.m * Map.tileSize - Map.mapVPx;
+			var my = Map.tiles[i].points.my * Map.tileSize - Map.mapVPy;
+
+			var points = [
+				[m-Map.hp.m, my-(2.5*Map.tileSize)],
+				[m, my-(4.5*Map.tileSize)],
+				[m+Map.hp.m, my-(2.5*Map.tileSize)],
+				[m, my+(4.5*Map.tileSize)],
+				[m-Map.hp.m, my+(2.5*Map.tileSize)],
+				[m-Map.hp.m, my-(2.5*Map.tileSize)]
+			]
+
+			var inside = insidePolygon([x, y], points);
+			if (inside) {
+				console.log(m, my, (m + Map.mapVPx)-Map.hp.m, (my + Map.mapVPy)-(2.5*Map.tileSize));
+				Map.touchLayer.moveTo((m + Map.mapVPx)-Map.hp.m, (my + Map.mapVPy)-(2.5*Map.tileSize));
+				Map.touchLayer.lineTo((m + Map.mapVPx), (my + Map.mapVPy)-(4.5*Map.tileSize));
+				Map.touchLayer.lineTo((m + Map.mapVPx)+Map.hp.m, (my + Map.mapVPy)-(2.5*Map.tileSize));
+				Map.touchLayer.lineTo((m + Map.mapVPx)+Map.hp.m, (my + Map.mapVPy)+(2.5*Map.tileSize));
+				Map.touchLayer.lineTo((m + Map.mapVPx), (my + Map.mapVPy)+(4.5*Map.tileSize));
+				Map.touchLayer.lineTo((m + Map.mapVPx)-Map.hp.m, (my + Map.mapVPy)+(2.5*Map.tileSize));
+				Map.touchLayer.lineTo((m + Map.mapVPx)-Map.hp.m, (my + Map.mapVPy)-(2.5*Map.tileSize));
+			}
+
+			console.log(inside);
 		}
 
-		var q = closestX+Map.mapVPx;
-		var r = closestY+Map.mapVPy;
+		Map.touchLayer.fillStyle = 'red';
+		Map.touchLayer.fill();
+		Map.touchLayer.closePath;
 
-		var tileId = Map.getTileBy2Dcord(stringifyCord(r), stringifyCord(q));
+		// Map.touchLayer.beginPath();
+		// Map.touchLayer.moveTo(q-Map.hp.m, r-(2.5*Map.tileSize));
+		// Map.touchLayer.lineTo(q, r-(4.5*Map.tileSize));
+		// Map.touchLayer.lineTo(q+Map.hp.m, r-(2.5*Map.tileSize));
+		// Map.touchLayer.lineTo(q+Map.hp.m, r+(2.5*Map.tileSize));
+		// Map.touchLayer.lineTo(q, r+(4.5*Map.tileSize));
+		// Map.touchLayer.lineTo(q-Map.hp.m, r+(2.5*Map.tileSize));
+		// Map.touchLayer.lineTo(q-Map.hp.m, r-(2.5*Map.tileSize));
+		// Map.touchLayer.fillStyle = 'red';
+		// Map.touchLayer.fill();
+		// Map.touchLayer.closePath;
+
+		// closeX = closestTo(x, Map.tileCentersX);
+		// closeY = closestTo(y, Map.tileCentersY);
+
+		// chosen = Map.getTileBy2Dcord(Map.tileCentersX[closeX], Map.tileCentersY[closeY]);
+		// if (!chosen) {
+		// 	console.log('no chosen', x, Map.tileCentersX[closeX], Map.tileCentersX[closestTo(x, Map.tileCentersX, Map.tileCentersX[closeX])]);
+		// 	closeX = closestTo(x, Map.tileCentersX, Map.tileCentersX[closeX]);
+		// 	chosen = Map.getTileBy2Dcord(Map.tileCentersX[closeX], Map.tileCentersY[closeY]);
+		// 	return;
+		// }
+		// var m = Map.tiles[chosen-1].points.m * Map.tileSize - Map.mapVPx;
+		// var my = Map.tiles[chosen-1].points.my * Map.tileSize - Map.mapVPy;
+
+		// Map.c.fillStyle = "#"+((1<<24)*Math.random()|0).toString(16);
+		// Map.c.beginPath();
+		// Map.c.rect((m+Map.mapVPx)-2.5,(my+Map.mapVPy)-2.5,5,5);
+		// Map.c.fill();
+		// Map.c.closePath;
+
+		// var points = [
+		// 	[m-Map.hp.m, my-(2.5*Map.tileSize)],
+		// 	[m, my-(4.5*Map.tileSize)],
+		// 	[m+Map.hp.m, my-(2.5*Map.tileSize)],
+		// 	[m, my+(4.5*Map.tileSize)],
+		// 	[m-Map.hp.m, my+(2.5*Map.tileSize)],
+		// 	[m-Map.hp.m, my-(2.5*Map.tileSize)]
+		// ]
+
+		// var inside = insidePolygon([x, y], points);
+
+		// console.log(inside, x, y, m, my);
+
+		
+
+		// $$$
+
+
+		return;
+
+		
+		
+		
+
+		var c = Map.c;
+		c.fillStyle = "#"+((1<<24)*Math.random()|0).toString(16);
+		c.beginPath();
+		c.rect(q+Map.mapVPx-10,r+Map.mapVPy-10,20,20);
+		c.fill();
+		c.closePath;
+
 		return {q:q, r:r, tileId:tileId}
 	},
 	startPathFinder: function () { // http://www.briangrinstead.com/blog/astar-search-algorithm-in-javascript
