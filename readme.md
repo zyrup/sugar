@@ -1,5 +1,7 @@
 # Sugar
 
+[![E|e](http://i.imgur.com/E7mmxZS.png)]
+
 Sugar is an ongoing game development project for learning purposes.
 
 **Features:**
