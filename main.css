@@ -1,0 +1,67 @@
+* {
+	margin: 0;
+	padding: 0;
+}
+#map {
+	z-index: -3;
+	position: absolute;
+}
+#units {
+	z-index: -2;
+}
+#touch {
+	z-index: -1;
+}
+#touch, #units, #click {
+	position: absolute;
+}
+#day-display {
+	position: absolute;
+	font-family: sans-serif;
+	margin: 1em;
+}
+#right-click-menu {
+	position: absolute;
+	background: #fdfdfd;
+	font-family: monospace;
+	border-radius: 1px;
+	border: 2px solid #5a5a5a;
+	z-index: 1;
+	cursor: pointer;
+	display: none;
+	left: 212px;
+	top: 40px;
+}
+#right-click-menu ul {
+	list-style-type: none;
+}
+#right-click-menu li {
+	text-align: center;
+	padding: 10px;
+}
+#right-click-menu li:hover {
+	font-weight: bold;
+}
+#login-password,
+#login-username {
+	position: absolute;
+	left: 15px;
+	padding: 5px;
+	z-index: 1;
+}
+#login-username {
+	top: 40px;
+}
+#login-password {
+	top: 70px;
+}
+#login-btn {
+	position: absolute;
+	top: 40px;
+	left: 157px;
+	height: 20px;
+	z-index: 1;
+	padding: 11px;
+	-webkit-appearance: inherit;
+	line-height: 0px;
+}
