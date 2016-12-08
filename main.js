@@ -2,26 +2,12 @@
 
 window.onload = function () {
 	Sock.connect2Server();
-	console.log('build(); corrugate(); irrigate();');
 	// console.log('under maintenance');
 }
 
-function build () {
-	Sock.socket.send('BUILD');
-}
-function corrugate () {
-	Sock.socket.send('CORRUGATE');
-}
-function irrigate () {
-	Sock.socket.send('IRRIGATE');
-}
-
 var Map = {
-	init: function (data) {
+	init: function (map, tiles) {
 
-		var exp = JSON.parse(data);
-		var map = exp.map;
-		var tiles = exp.tiles;
 		var size = Map.tileSize;
 		var mapW = map.r*size + Math.abs(map.l*size);
 		var mapH = map.b*size + Math.abs(map.u*size);
@@ -33,6 +19,7 @@ var Map = {
 		Map.mapH = mapH;
 
 		Map.tiles = [];
+		Map.drawRiverArr = [];
 
 		// hex points
 		Map.hp = {
@@ -276,6 +263,7 @@ var Map = {
 		var size = Map.tileSize;
 		var i = 0;
 		var len = Map.tiles.length;
+		var unit = Map.tileSize;
 		for (i; i<len; i++) {
 			if (Map.tiles[i].portal != null) {
 				// console.log(Map.tiles[i]);
@@ -283,8 +271,10 @@ var Map = {
 				points = Map.tiles[Map.tiles[i].id].points;
 				c = Map.c;
 				size = Map.tileSize;
-				c.fillStyle = '#00FFE6';
+				c.strokeStyle = 'rgba(0,255,230,0.3)';
+				c.lineWidth = Map.tileSize*1.2;
 
+				// draw dir <--
 				c.beginPath();
 				c.moveTo(points.m*size, points.a*size);
 				c.lineTo(points.l*size, points.b*size);
@@ -292,47 +282,39 @@ var Map = {
 				c.lineTo(points.m*size, points.d*size);
 				c.lineTo(points.r*size, points.c*size);
 				c.lineTo(points.r*size, points.b*size);
+				c.lineTo(points.m*size, points.a*size);
+
+				c.stroke();
 				c.closePath();
-				c.fill();
 
 			}
 		}
 	},
-	drawUnits: function (units) {
+	drawUnits: function (units, usrpos) {
 		var len = units.length;
 		var i = 0;
 		var tileId = null;
 		var points = null;
-		var c = null;
-		var size = null;
 		var imgXsize = null;
 		var imgYsize = null;
-		var img = new Image();
+		var player = false;
 
 		Map.unitLayer.save();
 		Map.unitLayer.setTransform(1, 0, 0, 1, 0, 0);
 		Map.unitLayer.clearRect(0,0,Map.unitLayer.canvas.width,Map.unitLayer.canvas.height);
 		Map.unitLayer.restore();
 
-		img.onload = function () {
-			for (i; i<len; i++) {
-				tileId = units[i].tile_pos;
+		Map.unitLayer.font = (Map.tileSize*8)+"px Arial";
 
-				if (typeof Map.tiles[tileId] == 'undefined') { continue; }
-				
-				points = Map.tiles[tileId].points;
-				c = Map.c;
-				size = Map.tileSize;
-
-				// 1:5 2:4 4:1.4
-				imgXsize = 35 / 1.4;
-				imgYsize = 46 / 1.4;
-
-				Map.unitLayer.drawImage( img, points.m*size - (imgXsize / 2), points.b*size - (imgYsize / 2), imgXsize, imgYsize );
-				
+		for (i; i<len; i++) {
+			tileId = units[i].tile_pos;
+			points = Map.tiles[tileId].points;
+			Map.unitLayer.fillStyle = '#000';
+			if (tileId == usrpos) {
+				Map.unitLayer.fillStyle = '#2487d4';
 			}
+			Map.unitLayer.fillText('☺',points.m*Map.tileSize-(Map.tileSize*4.1),(points.my)*Map.tileSize+(Map.tileSize*2));
 		}
-		img.setAttribute('src', 'thug-front.png');
 
 	},
 	help: {
@@ -410,13 +392,22 @@ var Sock = {
 			
 			if (typeof json.msg != 'undefined') {
 				if (json.msg == 'NOACCESS') {
-					console.log('No Access');
 				} else if (json.msg == 'MAP') {
-					Map.init(Data);
+					Map.init(json.map, json.tiles);
+					Map.drawUnits(json.units, json.usrpos);
+					Path.usrpos = json.usrpos;
+					Menu.updateTileMenu();
+					document.getElementById('day-display').innerHTML = "It's the day "+json.day+".";
 					Path.init();
 				} else if (json.msg == 'TURN') {
-					Map.drawUnits(json.units);
+					Map.drawUnits(json.units, json.usrpos);
+					Path.usrpos = json.usrpos;
+					Menu.updateTileMenu();
 					document.getElementById('day-display').innerHTML = "It's the day "+json.day+".";
+					Map.touchLayer.save();
+					Map.touchLayer.setTransform(1, 0, 0, 1, 0, 0);
+					Map.touchLayer.clearRect(0,0,Map.touchLayer.canvas.width,Map.touchLayer.canvas.height);
+					Map.touchLayer.restore();
 				} else if (json.msg == 'NOMAPGEN') {
 					console.log('A map build is currently in progress. Please wait.');
 				}
@@ -456,17 +447,17 @@ var Menu = {
 	},
 	updateTileMenu: function () {
 		var html = '';
-		var tileId = Path.startTile-1;
+		var tileId = Path.usrpos-1;
 		if (tileId < 0) { tileId = 0; }
 
 		if (Map.tiles[tileId].portal) {
 			html += '<ul>';
 				html += '<li onclick="Menu.enterPortal('+tileId+')">Enter portal</li>';
-				html += '<li>Destroy portal</li>';
+				html += '<li onclick="Menu.destroyPortal('+tileId+')">Destroy portal</li>';
 			html += '</ul>';
 		} else {
 			html += '<ul>';
-				html += '<li>Create portal</li>';
+				html += '<li onclick="Menu.createPortal('+tileId+')">Create portal</li>';
 			html += '</ul>';
 		}
 
@@ -480,7 +471,29 @@ var Menu = {
 		document.getElementById('right-click-menu').style.display = 'none';
 		move = JSON.stringify(move);
 		Sock.socket.send('GOTOMAP::'+move);
+	},
+	gotoTile: function (tileId) {
+		var move = {
+			'tileId': tileId
+		}
+		move = JSON.stringify(move);
+		Sock.socket.send('GOTOTILE::'+move);
+	},
+	createPortal: function (tileId) {
+		var tile = {
+			'tileId': tileId+1
+		}
+		tile = JSON.stringify(tile);
+		Sock.socket.send('CREATEPORTAL::'+tile);
+	},
+	destroyPortal: function (tileId) {
+		var tile = {
+			'tileId': tileId+1
+		}
+		tile = JSON.stringify(tile);
+		Sock.socket.send('DESTROYPORTAL::'+tile);
 	}
+
 }
 
 var Path = {
@@ -496,17 +509,17 @@ var Path = {
 	closed: [],
 	startTile: null,
 	goalTile: null,
-	initClick: null,
+	clickedTile: null,
 	tiles:[],
-	touchLayerClicked: 0,
+	drawTiles: [],
 	init: function () {
 
 		Path.open = [];
 		Path.closed = [];
+		Path.drawTiles = [];
 		Path.startTile = null;
 		Path.goalTile = null;
-		Path.initClick = null;
-		Path.touchLayerClicked = 0;
+		Path.clickedTile = null;
 
 		// Object.keys(data).forEach(function (key) {
 		// 	console.log(data[key]);
@@ -520,37 +533,47 @@ var Path = {
 		Map.touchLayer.clearRect(0,0,Map.touchLayer.canvas.width,Map.touchLayer.canvas.height);
 		Map.touchLayer.restore();
 
-		Path.drawCircleOnTouchLayer(Map.tiles[tileId].points.m*Map.tileSize, Map.tiles[tileId].points.my*Map.tileSize, Map.tileSize+1, '#000000');
+		Path.drawCircleOnTouchLayer(Map.tiles[tileId].points.m*Map.tileSize, Map.tiles[tileId].points.my*Map.tileSize, Map.tileSize+1, 'rgba(0, 0, 0, 0.4)');
 
-		Path.touchLayerClicked++;
-		if (Path.touchLayerClicked == 1) { // redundant when player has final tile position
-			Path.startTile = tileId;
-			Path.initClick = true;
-		}
+		if (Path.clickedTile == tileId) {
+			Path.drawTiles.forEach(function(entry) {
+				Path.drawCircleOnTouchLayer(Path.tiles[entry].x*Map.tileSize, Path.tiles[entry].y*Map.tileSize, Map.tileSize+1, '#000000');
+				Path.drawCircleOnTouchLayer(Map.tiles[tileId].points.m*Map.tileSize, Map.tiles[tileId].points.my*Map.tileSize, Map.tileSize+1, '#000000');
+			});
+			Menu.gotoTile(tileId);
+		} else {
+			Path.drawTiles = [];
+			Path.clickedTile = tileId;
 
-		if (Path.touchLayerClicked == 2 && Path.initClick) {
+			Path.startTile = Path.usrpos;
 			Path.goalTile = tileId;
-			if (Path.startTile == Path.goalTile) {
-				Path.goalTile = null;
-				Menu.updateTileMenu();
-				Path.touchLayerClicked = 1;
-			} else {
-				Path.startPathFinder();
-			}
+			Path.startPathFinder();
 		}
 
-		if (Path.touchLayerClicked == 3) {
-			Path.startTile = Path.goalTile;
-			Path.goalTile = tileId;
-			if (Path.startTile == Path.goalTile) {
-				Path.goalTile = null;
-				Menu.updateTileMenu();
-				Path.touchLayerClicked = 1;
-			} else {
-				Path.touchLayerClicked = 2;
-				Path.startPathFinder();
-			}
-		}
+		// if (Path.touchLayerClicked == 1) {
+		// 	Path.goalTile = tileId;
+		// 	if (Path.startTile == Path.goalTile) {
+		// 		Path.goalTile = null;
+		// 		Path.touchLayerClicked = 0;
+		// 	} else {
+		// 		Path.startPathFinder();
+		// 	}
+		// }
+
+		// if (Path.touchLayerClicked == 2) { // this is 
+		// 	console.log(4);
+		// 	Path.startTile = Path.goalTile;
+		// 	Path.goalTile = tileId;
+		// 	if (Path.startTile == Path.goalTile) {
+		// 		Path.goalTile = null;
+		// 		Path.touchLayerClicked = 0;
+		// 		Menu.gotoTile(Path.startTile);
+
+		// 	} else {
+		// 		Path.touchLayerClicked = 1;
+		// 		Path.startPathFinder();
+		// 	}
+		// }
 	},
 	startPathFinder: function () { // http://www.briangrinstead.com/blog/astar-search-algorithm-in-javascript
 		// Path.tiles includes objects with data neighbors, x, y, g, d
@@ -587,11 +610,12 @@ var Path = {
 			// End case -- result has been found, return the traced path
 			if (currentNode == Path.goalTile) {
 
-				// Path.drawCircleOnTouchLayer(Path.tiles[currentNode].x*Map.tileSize, Path.tiles[currentNode].y*Map.tileSize, Map.tileSize+1, '#000000'); // #FF9100 orange
+				// Path.drawCircleOnTouchLayer(Path.tiles[currentNode].x*Map.tileSize, Path.tiles[currentNode].y*Map.tileSize, Map.tileSize+1, 'rgba(0, 0, 0, 0.4)'); // #FF9100 orange
 
 				curr = Path.tiles[currentNode];
 				while(typeof curr.parent != 'undefined') {
-					Path.drawCircleOnTouchLayer(Path.tiles[curr.parent].x*Map.tileSize, Path.tiles[curr.parent].y*Map.tileSize, Map.tileSize+1, '#000000'); // #FF9100 orange
+					Path.drawTiles.push(curr.parent);
+					Path.drawCircleOnTouchLayer(Path.tiles[curr.parent].x*Map.tileSize, Path.tiles[curr.parent].y*Map.tileSize, Map.tileSize+1, 'rgba(0, 0, 0, 0.4)'); // #FF9100 orange
 					curr = Path.tiles[curr.parent];
 				}
 
@@ -676,7 +700,6 @@ var Path = {
 			delete Path.tiles[i]['f'];
 			delete Path.tiles[i]['parent'];
 		}
-		// Path.initClick = false;
 		Path.open = [];
 		Path.closed = [];
 	},
