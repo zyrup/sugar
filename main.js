@@ -182,12 +182,148 @@ var Map = {
 		}
 
 		Map.drawRivers();
+		Map.drawForest();
 		Map.drawPortals();
 
 	},
 	tileSize: 4,
 	tiles: [],
 	c: null,
+	tileHumidityLvl: [],
+	tileHumidityLvl2: [],
+	drawForest: function () {
+		var i = 0;
+		var len = Map.tiles.length;
+		var tile = null;
+		var points = null;
+
+		for (i; i<len; i++) {
+			tile = Map.tiles[i];
+			points = tile.points;
+
+			if (tile.type == 1 || tile.height == 5) {
+				continue;
+			}
+
+			if (tile.trees == 5) {
+				Map.draw.onTile.dot(points, 't', 'rect', 'rgba(94, 220, 0, 0.5)');
+				Map.draw.onTile.dot(points, 'tl', 'rect', 'rgba(94, 220, 0, 0.5)');
+				Map.draw.onTile.dot(points, 'bl', 'rect', 'rgba(94, 220, 0, 0.5)');
+				Map.draw.onTile.dot(points, 'b', 'rect', 'rgba(94, 220, 0, 0.5)');
+				Map.draw.onTile.dot(points, 'br', 'rect', 'rgba(94, 220, 0, 0.5)');
+				Map.draw.onTile.dot(points, 'tr', 'rect', 'rgba(94, 220, 0, 0.5)');
+				Map.draw.onTile.dot(points, 'm', 'rect', 'rgba(94, 220, 0, 0.5)');
+			} else if (tile.trees == 4) {
+				Map.draw.onTile.dot(points, 'ttll', 'rect', 'rgba(94, 220, 0, 0.5)');
+				Map.draw.onTile.dot(points, 'ttrr', 'rect', 'rgba(94, 220, 0, 0.5)');
+				Map.draw.onTile.dot(points, 'bbll', 'rect', 'rgba(94, 220, 0, 0.5)');
+				Map.draw.onTile.dot(points, 'bbrr', 'rect', 'rgba(94, 220, 0, 0.5)');
+				Map.draw.onTile.dot(points, 'm', 'rect', 'rgba(94, 220, 0, 0.5)');
+			} else if (tile.trees == 3) {
+				Map.draw.onTile.dot(points, 'tril', 'rect', 'rgba(94, 220, 0, 0.5)');
+				Map.draw.onTile.dot(points, 'trir', 'rect', 'rgba(94, 220, 0, 0.5)');
+				Map.draw.onTile.dot(points, 'trib', 'rect', 'rgba(94, 220, 0, 0.5)');
+			} else if (tile.trees == 2) {
+				Map.draw.onTile.dot(points, 'm', 'rect', 'rgba(94, 220, 0, 0.5)');
+			}
+		}
+
+		Map.c.fill();
+
+		// set init tiles
+		// for (i; i<len; i++) {
+		// 	tile = Map.tiles[i];
+		// 	if (tile.is_river || tile.type == 1) { //  && tile.type != 1 && tile.height != 5
+		// 		// Map.help.drawTileById(tile.id);
+		// 		if (tile.height == 2) {
+		// 			Map.tileHumidityLvl.push({tile:tile, lvl:5});
+		// 		} else if(tile.height == 3) {
+		// 			Map.tileHumidityLvl.push({tile:tile, lvl:3});
+		// 		} else if(tile.height == 4) {
+		// 			Map.tileHumidityLvl.push({tile:tile, lvl:2});
+		// 		} else {
+		// 			Map.tileHumidityLvl.push({tile:tile, lvl:5});
+		// 		}
+		// 	}
+		// }
+
+		// var neighs = function () {
+		// 	i = 0;
+		// 	len = Map.tileHumidityLvl.length;		
+		// 	for (i; i<len; i++) {
+		// 		tile = Map.tileHumidityLvl[i].tile;
+		// 		var keys = Object.keys(tile);
+		// 		var len2 = keys.length;
+		// 		var j = 0;
+		// 		var noN = [];
+		// 		var parentLvl = Map.tileHumidityLvl[i].lvl;
+		// 		for (j = 0; j<len2; j++) {
+		// 			if (keys[j].indexOf('n_') > -1 && tile[keys[j]] != null) {
+		// 				noN.push(keys[j]);
+		// 			}
+		// 		}
+		// 		len2 = noN.length;
+		// 		for (j = 0; j<len2; j++) {
+		// 			if (tile[noN[j]] == null) {
+		// 				continue;
+		// 			}
+		// 			// console.log(tile.id, tile[noN[j]], noN[j]); hm
+		// 			var id = tile[noN[j]]-1;
+		// 			tile = Map.tiles[id];
+		// 			if (tile.type == 0) {
+		// 				var o = 0;
+		// 				var len3 = Map.tileHumidityLvl.length;
+		// 				var pass = true;
+		// 				for (o = 0; o<len3; o++) {
+		// 					if (id == Map.tileHumidityLvl[o].tile.id-1) {
+		// 						// update when higher amount of humidity
+		// 						pass = false;
+		// 					}
+		// 				}
+		// 				if (pass) {
+		// 					Map.tileHumidityLvl.push({tile:tile, lvl:parentLvl-1});
+		// 				}
+
+		// 			}
+		// 		}
+		// 	}
+		// }
+		// neighs();
+
+		// i = 0;
+		// len = Map.tileHumidityLvl.length;
+		// for (i; i<len; i++) {
+		// 	tile = Map.tileHumidityLvl[i].tile;
+		// 	points = tile.points;
+
+		// 	if (tile.type == 1 || tile.height == 5) {
+		// 		continue;
+		// 	}
+
+		// 	if (Map.tileHumidityLvl[i].lvl == 4 || 5) {
+		// 		Map.draw.onTile.dot(points, 't', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 		Map.draw.onTile.dot(points, 'tl', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 		Map.draw.onTile.dot(points, 'bl', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 		Map.draw.onTile.dot(points, 'b', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 		Map.draw.onTile.dot(points, 'br', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 		Map.draw.onTile.dot(points, 'tr', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 		Map.draw.onTile.dot(points, 'm', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 	} else if (Map.tileHumidityLvl[i].lvl == 3) {
+		// 		Map.draw.onTile.dot(points, 'ttll', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 		Map.draw.onTile.dot(points, 'ttrr', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 		Map.draw.onTile.dot(points, 'bbll', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 		Map.draw.onTile.dot(points, 'bbrr', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 		Map.draw.onTile.dot(points, 'm', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 	} else if (Map.tileHumidityLvl[i].lvl == 2) {
+		// 		Map.draw.onTile.dot(points, 'tril', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 		Map.draw.onTile.dot(points, 'trir', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 		Map.draw.onTile.dot(points, 'trib', 'rect', 'rgba(94, 220, 0, 0.5)');
+		// 	}
+
+		// }
+
+		// Map.c.fill();
+	},
 	drawRiverArr: [],
 	drawRivers: function () {
 		var len = Map.drawRiverArr.length;
@@ -317,6 +453,77 @@ var Map = {
 		}
 
 	},
+	draw: {
+		onTile: {
+			dot: function (points, pos, form, color) {
+				var size = Map.tileSize;
+				var x = null;
+				var y = null;
+				var c = Map.c;
+				c.fillStyle = color;
+				if (form == 'rect') {
+					var rectSize = Map.tileSize*2;
+					if (pos == 't') { // top
+						x = points.m;
+						y = points.a;
+						c.rect(x*size-size, y*size+0.5*size, rectSize, rectSize);
+					} else if (pos == 'tl') { // top left
+						x = points.l;
+						y = points.b;
+						c.rect(x*size+0.45*size, y*size+0.25*size, rectSize, rectSize);
+					} else if (pos == 'ttll') { // between top and top left
+						x = points.l;
+						y = points.b;
+						c.rect(x*size+1*size, y*size-0.8*size, rectSize, rectSize);
+					} else if (pos == 'bl') { // bottom left
+						x = points.l;
+						y = points.c;
+						c.rect(x*size+0.45*size, y*size-2.25*size, rectSize, rectSize);
+					} else if (pos == 'bbll') { // between bottom and bottom left
+						x = points.l;
+						y = points.c;
+						c.rect(x*size+1*size, y*size-1.2*size, rectSize, rectSize);
+					} else if (pos == 'b') { // bottom
+						x = points.m;
+						y = points.d;
+						c.rect(x*size-size, y*size-2.5*size, rectSize, rectSize);
+					} else if (pos == 'br') { // bottom right
+						x = points.r;
+						y = points.c;
+						c.rect(x*size-2.45*size, y*size-2.25*size, rectSize, rectSize);
+					} else if (pos == 'bbrr') { // between bottom and bottom right
+						x = points.r;
+						y = points.c;
+						c.rect(x*size-3*size, y*size-1.2*size, rectSize, rectSize);
+					} else if (pos == 'tr') { // top right
+						x = points.r;
+						y = points.b;
+						c.rect(x*size-2.45*size, y*size+0.25*size, rectSize, rectSize);
+					} else if (pos == 'ttrr') { // between top and top right
+						x = points.r;
+						y = points.b;
+						c.rect(x*size-3*size, y*size-0.8*size, rectSize, rectSize);
+					} else if (pos == 'm') { // middle
+						x = points.m;
+						y = points.my;
+						c.rect(x*size-size, y*size-1*size, rectSize, rectSize);
+					} else if (pos == 'tril') { // triangle left
+						x = points.m;
+						y = points.my;
+						c.rect(x*size-3*size, y*size-2.2*size, rectSize, rectSize);
+					} else if (pos == 'trir') { // triangle right
+						x = points.m;
+						y = points.my;
+						c.rect(x*size+1*size, y*size-2.2*size, rectSize, rectSize);
+					} else if (pos == 'trib') { // triangle bottom
+						x = points.m;
+						y = points.my;
+						c.rect(x*size-size, y*size+size, rectSize, rectSize);
+					}
+				}
+			}
+		}
+	},
 	help: {
 		drawTileById: function (id) {
 
@@ -391,7 +598,7 @@ var Sock = {
 			var json = JSON.parse(Data);
 			
 			if (typeof json.msg != 'undefined') {
-				if (json.msg == 'NOACCESS') {
+				if (json.msg == 'NOACCESS') { // wrong credentials
 				} else if (json.msg == 'MAP') {
 					Map.init(json.map, json.tiles);
 					Map.drawUnits(json.units, json.usrpos);
@@ -399,15 +606,19 @@ var Sock = {
 					Menu.updateTileMenu();
 					document.getElementById('day-display').innerHTML = "It's the day "+json.day+".";
 					Path.init();
+					Player.playTileSound();
+					document.getElementsByClassName('login-menu')[0].style.display = 'none';
 				} else if (json.msg == 'TURN') {
 					Map.drawUnits(json.units, json.usrpos);
 					Path.usrpos = json.usrpos;
 					Menu.updateTileMenu();
+
 					document.getElementById('day-display').innerHTML = "It's the day "+json.day+".";
 					Map.touchLayer.save();
 					Map.touchLayer.setTransform(1, 0, 0, 1, 0, 0);
 					Map.touchLayer.clearRect(0,0,Map.touchLayer.canvas.width,Map.touchLayer.canvas.height);
 					Map.touchLayer.restore();
+					Player.playTileSound();
 				} else if (json.msg == 'NOMAPGEN') {
 					console.log('A map build is currently in progress. Please wait.');
 				}
@@ -427,6 +638,7 @@ var Sock = {
 		}
 
 		Menu.initLoginBtn();
+		Menu.initSoundIcon();
 
 	}
 }
@@ -445,6 +657,25 @@ var Menu = {
 			Sock.socket.send('USER::'+user);
 		});
 	},
+	initSoundIcon: function () {
+		document.getElementById('sound-icon').addEventListener('click', function(e) {
+			var className = this.className;
+			var audio = null;
+			if (className == 'on') {
+				this.className = 'off';
+				Player.sounds.forEach(function(el) {
+					audio = el;
+					audio.pause();
+				});
+				Player.sounds = [];
+				Player.audioPlays = false;
+				Player.audioStop = true;
+			} else {
+				this.className = 'on';
+				Player.audioStop = false;
+			}
+		});
+	},
 	updateTileMenu: function () {
 		var html = '';
 		var tileId = Path.usrpos-1;
@@ -461,14 +692,14 @@ var Menu = {
 			html += '</ul>';
 		}
 
-		document.getElementById('right-click-menu').style.display = 'block';
-		document.getElementById('right-click-menu').innerHTML = html;
+		document.getElementById('click-menu').style.display = 'block';
+		document.getElementById('click-menu').innerHTML = html;
 	},
 	enterPortal: function (tileId) {
 		var move = {
 			'tileId': tileId+1
 		}
-		document.getElementById('right-click-menu').style.display = 'none';
+		document.getElementById('click-menu').style.display = 'none';
 		move = JSON.stringify(move);
 		Sock.socket.send('GOTOMAP::'+move);
 	},
@@ -711,5 +942,76 @@ var Path = {
 	},
 	tileDistance: function(a, b) { // euclidean distance
 		return Math.round(Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)));
+	}
+}
+
+var Player = {
+	audioPlays: null,
+	audioStop: false,
+	sounds: [],
+	playTileSound: function () {
+		var tileId = Path.usrpos;
+		if (Player.audioPlays != tileId && !Player.audioStop) {
+			var audio = null;
+
+			Player.sounds.forEach(function(el) {
+				audio = el;
+				audio.pause();
+			});
+			Player.sounds = [];
+
+			var tile = Map.tiles[tileId];
+
+			Player.audioPlays = tileId;
+
+			if ((tile.trees == 1 || tile.trees == 2) && tile.height < 3) {
+				audio = new Audio('sound/env1.ogg');
+				Player.sounds.push(audio);
+			} else if ((tile.trees == 3 || tile.trees == 4 || tile.trees == 5) && tile.height < 3) {
+				audio = new Audio('sound/forest.ogg');
+				Player.sounds.push(audio);
+			}
+			if (tile.is_river && tile.height < 4) {
+				audio = new Audio('sound/stream.ogg');
+				Player.sounds.push(audio);
+			}
+			if (tile.height >= 3) {
+				audio = new Audio('sound/wind.ogg');
+				Player.sounds.push(audio);
+			}
+			if (tile.height < 3) {
+				var keys = Object.keys(tile);
+				var len = keys.length;
+				var i = 0;
+				var noN = [];
+				var id = null;
+				for (i = 0; i<len; i++) {
+					if (keys[i].indexOf('n_') > -1 && tile[keys[i]] != null) {
+						noN.push(keys[i]);
+					}
+				}
+				len = noN.length;
+				for (i = 0; i<len; i++) {
+					id = tile[noN[i]]-1;
+					if (Map.tiles[id].type == 1) {
+						audio = new Audio('sound/shore.ogg');
+						Player.sounds.push(audio);	
+						i = len;
+					}
+				}
+			}
+
+			if (audio != null) {
+				document.getElementById('sound-icon').className = 'on';
+				Player.sounds.forEach(function(el) {
+					audio = el;
+					audio.addEventListener("ended", function() {
+						this.play();
+					});
+					audio.play();
+				});
+			}
+
+		}
 	}
 }
