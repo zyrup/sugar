@@ -5,7 +5,7 @@
 Sugar is an ongoing game development project for learning purposes.
 
 **Features:**
-* **Map generation** using [cellular automaton](https://en.wikipedia.org/wiki/Cellular_automaton) with hex tiles. Varying height-levels, rivers and lakes. The generation is quite slow atm.
+* **Map generation** using [cellular automaton](https://en.wikipedia.org/wiki/Cellular_automaton) with hex tiles. Varying height-levels, rivers and lakes. The generation is quite slow at the moment. Which is why I'm currently working on a [faster map generator](http://i.zyrup.kochab.uberspace.de/sugar/10/) programmed in C.
 * **Pathfinding** using [A star algorithm](http://www.briangrinstead.com/blog/astar-search-algorithm-in-javascript). There is a lot to improve.
 * **Websocket** using [WebSocket server for PHP](https://code.google.com/archive/p/php-websocket-server/).
 * **NPCs**. They are just wandering around atm.

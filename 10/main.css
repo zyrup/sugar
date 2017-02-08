@@ -1,0 +1,28 @@
+body {
+	margin: 0;
+}
+.menu {
+	position: fixed;
+	left: 20px;
+	top: 20px;
+	background: rgba(108, 232, 177, 0.65);
+	min-width: 400px;
+	font-family: monospace;
+	text-transform: uppercase;
+	padding: 10px 20px;
+	font-size: 1.2em;
+}
+.menu .entry {
+	height: 30px;
+	line-height: 30px;
+}
+.menu .entry .name {
+	display: inline;
+}
+.menu .entry input[type='range'] {
+	float: right;
+}
+.menu .entry span {
+	margin-left: 10px;
+	font-weight: bold;
+}
