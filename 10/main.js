@@ -1,9 +1,23 @@
+function hasClass(el, className) {
+	return el.classList ? el.classList.contains(className) : new RegExp('\\b'+ className+'\\b').test(el.className);
+}
+
+function addClass(el, className) {
+	if (el.classList) el.classList.add(className);
+	else if (!hasClass(el, className)) el.className += ' ' + className;
+}
+
+function removeClass(el, className) {
+	if (el.classList) el.classList.remove(className);
+	else el.className = el.className.replace(new RegExp('\\b'+ className+'\\b', 'g'), '');
+}
+
 function addEvent(el, type, handler) {
 	if (el.attachEvent) el.attachEvent('on'+type, handler); else el.addEventListener(type, handler);
 }
 
 function getAjax (url, success) {
-	let xhr = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+	var xhr = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
 	xhr.open('GET', url);
 	xhr.onreadystatechange = function() {
 		if (xhr.readyState>3 && xhr.status==200) success(xhr.responseText);
@@ -22,7 +36,7 @@ lc      rc
     md
 */
 
-let Map = {
+var Map = {
 	init: function (tiles) {
 		Map.tiles = tiles;
 		Map.tileSize = document.getElementsByClassName('entry-tilesize')[0].childNodes[1].childNodes[1].innerHTML;
@@ -49,25 +63,25 @@ let Map = {
 		Map.drawCords();
 	},
 	enlargeCordBase: function () {
-		for (let i = 0; i < 5; i++) {
+		for (var i = 0; i < 5; i++) {
 			Map.cordBase[Object.keys(Map.cordBase)[i]] = Map.cordBase[Object.keys(Map.cordBase)[i]]*Map.tileSize;
 		}
 	},
 	getCords: function () {
-		let i = 0;
-		let len = Map.tiles.length;
-		let tile = null;
-		let x = null;
-		let y = null;
-		let z = null;
-		let l = null;
-		let m = null;
-		let r = null;
-		let a = null;
-		let b = null;
-		let c = null;
-		let d = null;
-		let pos = null;
+		var i = 0;
+		var len = Map.tiles.length;
+		var tile = null;
+		var x = null;
+		var y = null;
+		var z = null;
+		var l = null;
+		var m = null;
+		var r = null;
+		var a = null;
+		var b = null;
+		var c = null;
+		var d = null;
+		var pos = null;
 		for (i=0; i<len; i++) {
 			tile = Map.tiles[i];
 			x = tile.x;
@@ -116,10 +130,10 @@ let Map = {
 
 	},
 	drawCords: function () {
-		let i = 0;
-		let len = Map.tiles.length;
+		var i = 0;
+		var len = Map.tiles.length;
 		for (i=0; i<len; i++) {
-			let tile = Map.tiles[i];
+			var tile = Map.tiles[i];
 
 			if (tile.pos) {
 				Map.c.fillStyle = '#afafaf';
@@ -146,7 +160,7 @@ let Map = {
 
 }
 
-let App = {
+var App = {
 	bind: function () {
 
 		[].forEach.call(document.querySelectorAll('.entry'), function(item) {
@@ -158,21 +172,50 @@ let App = {
 		});
 
 		addEvent(document.getElementsByName('send')[0], 'click', function() {
-			App.getMap();
+			App.getMap(1);
 		})
 
 	},
 	init: function () {
 		App.bind();
-		App.getMap();
+		App.getMap(0);
 	},
-	getMap: function () {
-		let tilecap = document.getElementsByClassName('entry-tilecap')[0].childNodes[1].childNodes[1].innerHTML;
-		let pow = document.getElementsByClassName('entry-pow')[0].childNodes[1].childNodes[1].innerHTML;
+	handleMapgen: function () {
+		App.failedLoads = 0;
+		getAjax (window.location.pathname+'getmap.php?_'+new Date().getTime(), function(data) {
 
-		getAjax (window.location.pathname+'/getmap.php?tilecap='+tilecap+'&pow='+pow+'?_'+new Date().getTime(), function(data) {
-			Map.init(JSON.parse(data).tiles);
+			try {
+				data = JSON.parse(data);
+				App.failedLoads = 0;
+				Map.init(data.tiles);
+				removeClass(document.querySelectorAll('body')[0], 'loading');
+			} catch (e) {
+				if (App.failedLoads == 5) {
+					console.log('loading error');
+				} else {
+					setTimeout(function(){
+						App.handleMapgen();
+					}, 1000);
+					App.failedLoads++;
+				}
+			}
+
 		});
+
+	},
+	getMap: function (n) {
+		if (n) {
+			var tilecap = document.getElementsByClassName('entry-tilecap')[0].childNodes[1].childNodes[1].innerHTML;
+			var pow = document.getElementsByClassName('entry-pow')[0].childNodes[1].childNodes[1].innerHTML;
+
+			addClass(document.querySelectorAll('body')[0], 'loading');
+
+			getAjax (window.location.pathname+'getmap.php?tilecap='+tilecap+'&pow='+pow+'?_'+new Date().getTime(), function() {
+				App.handleMapgen();
+			});
+		} else {
+			App.handleMapgen();
+		}
 	}
 }
 

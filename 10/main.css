@@ -1,16 +1,69 @@
 body {
 	margin: 0;
+	font-family: monospace;
 }
+body.loading:before {
+	content: '';
+	display: block;
+	position: fixed;
+	background: white;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 1;
+	opacity: 0.4;
+	-webkit-transition: opacity 200ms ease-out;
+	-moz-transition: opacity 200ms ease-out;
+	-o-transition: opacity 200ms ease-out;
+	transition: opacity 200ms ease-out;
+}
+body.loading:after {
+	-webkit-animation: spin 0.7s linear infinite;
+					animation: spin 0.7s linear infinite;
+	border: 1px solid rgba(0,0,0,0.2);
+	border-top-color: rgba(0,0,0,0.9);
+	border-radius: 100%;
+	content: '';
+	display: block;
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	margin: -20px 0 0 -20px;
+	width: 40px;
+	height: 40px;
+}
+@-webkit-keyframes spin {
+	0% {
+		-webkit-transform: rotate(0deg);
+						transform: rotate(0deg);
+	}
+	100% {
+		-webkit-transform: rotate(360deg);
+						transform: rotate(360deg);
+	}
+}
+@keyframes spin {
+	0% {
+		-webkit-transform: rotate(0deg);
+						transform: rotate(0deg);
+	}
+	100% {
+		-webkit-transform: rotate(360deg);
+						transform: rotate(360deg);
+	}
+}
+
 .menu {
 	position: fixed;
 	left: 20px;
 	top: 20px;
 	background: rgba(108, 232, 177, 0.65);
 	min-width: 400px;
-	font-family: monospace;
 	text-transform: uppercase;
 	padding: 10px 20px;
 	font-size: 1.2em;
+	z-index: 2;
 }
 .menu .entry {
 	height: 30px;
@@ -26,3 +79,10 @@ body {
 	margin-left: 10px;
 	font-weight: bold;
 }
+.browser-dev-info {
+	position: absolute;
+	font-size: 0.8em;
+	right: 0;
+	color: #656565;
+}
+

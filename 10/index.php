@@ -3,11 +3,12 @@
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0">
-		<title>mapgen</title>
+		<title>Faster map generator</title>
 		<link rel="stylesheet" type="text/css" href="main.css">
 		<script type="text/javascript" src="main.js"></script>
 	</head>
 	<body>
+		<div class="browser-dev-info">Currently tested and developed with Chrome Version 56.0.2924.87 (64-bit)</div>
 		<canvas id="map"></canvas>
 		<div class="menu">
 			<div class="entry entry-tilecap">
