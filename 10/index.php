@@ -9,6 +9,7 @@
 	</head>
 	<body>
 		<div class="browser-dev-info">Currently tested and developed with Chrome Version 56.0.2924.87 (64-bit)</div>
+		<svg id="clicklayer"></svg>
 		<canvas id="map"></canvas>
 		<div class="menu">
 			<div class="entry entry-tilecap">
@@ -20,22 +21,21 @@
 				<input type="range" value="0.00125" step="0.00005" min="0.00125" max="1">
 			</div>
 			<div class="entry entry-tilesize">
-				<div class="name">Tile size<span>1</span></div>
-				<input type="range" value="1" step="0.25" min="0.25" max="10">
+				<div class="name">Tile size<span>2</span></div>
+				<input type="range" value="2" step="0.25" min="0.25" max="10">
 			</div>
-			<div class="entry entry-showcords">
-				<div class="name">Show cords</div>
-				<input type="checkbox" name="cords">
+			<div class="entry entry-clicklayer">
+				<div class="name">Click layer</div>
+				<input type="checkbox" value="fillgaps" checked>
 			</div>
 			<div class="entry">
 				<div class="name">(Later) Fill gaps</div>
 				<input type="checkbox" name="fillgaps" value="fillgaps">
 			</div>
-			<div class="entry">
-				<div class="name">(Later) Click layer</div>
-				<input type="checkbox" name="fillgaps" value="fillgaps">
-			</div>
 			<input type="button" name="send" value="send">
+		</div>
+		<div class="tile-info">
+			
 		</div>
 	</body>
 </html>

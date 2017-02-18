@@ -40,7 +40,15 @@ var Map = {
 	init: function (tiles) {
 		Map.tiles = tiles;
 		Map.tileSize = document.getElementsByClassName('entry-tilesize')[0].childNodes[1].childNodes[1].innerHTML;
-		Map.showCords = document.getElementsByClassName('entry-showcords')[0].childNodes[3].checked;
+		Map.clickLayerBool = document.getElementsByClassName('entry-clicklayer')[0].childNodes[3].checked;
+		Map.clickLayer = document.getElementById('clicklayer');
+		Map.clickLayer.innerHTML = '';
+		document.getElementsByClassName('tile-info')[0].innerHTML = '';
+
+		if (Map.tiles.length > 10000) {
+			Map.clickLayerBool = false;
+		}
+
 		Map.c = document.getElementById('map').getContext('2d');
 
 		Map.xVpos = 0;
@@ -60,7 +68,15 @@ var Map = {
 		Map.c.canvas.width  = Map.xVpos-Map.xVneg;
 		Map.c.canvas.height = Map.yVpos-Map.yVneg;
 		Map.c.translate(-Map.xVneg, -Map.yVneg);
+
+		if (Map.clickLayerBool) {
+			Map.clickLayer.setAttribute('width', Map.c.canvas.width);
+			Map.clickLayer.setAttribute('height', Map.c.canvas.height);
+			Map.clickLayer.setAttribute('viewBox', (Map.xVneg)+' '+(Map.yVneg)+' '+Map.c.canvas.width+' '+Map.c.canvas.height);
+		}
+
 		Map.drawCords();
+		removeClass(document.querySelectorAll('body')[0], 'loading');
 	},
 	enlargeCordBase: function () {
 		for (var i = 0; i < 5; i++) {
@@ -132,8 +148,9 @@ var Map = {
 	drawCords: function () {
 		var i = 0;
 		var len = Map.tiles.length;
+		var tile = null;
 		for (i=0; i<len; i++) {
-			var tile = Map.tiles[i];
+			tile = Map.tiles[i];
 
 			if (tile.pos) {
 				Map.c.fillStyle = '#afafaf';
@@ -152,10 +169,32 @@ var Map = {
 					Map.c.fillStyle = '#000';
 					Map.c.fillText(tile.x+'|'+tile.y, tile.pos.l, tile.pos.c);
 				}
+				if (Map.clickLayerBool) {
+					var points = tile.pos.m+','+tile.pos.a+' '+
+											 tile.pos.l+','+tile.pos.b+' '+
+											 tile.pos.l+','+tile.pos.c+' '+
+											 tile.pos.m+','+tile.pos.d+' '+
+											 tile.pos.r+','+tile.pos.c+' '+
+											 tile.pos.r+','+tile.pos.b;
+
+					var polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+					polygon.setAttribute('data-tileId', tile.id);
+					polygon.setAttribute('points', points);
+					polygon.setAttribute('fill-opacity', '0');
+					polygon.addEventListener('mousemove', function(e) {
+						Map.showTileInfo(this.getAttribute('data-tileId'));
+					});
+					Map.clickLayer.insertBefore(polygon, Map.clickLayer.childNodes[0]);
+				}
 
 			}
 
 		}
+	},
+	showTileInfo: function (id) {
+		var tile = Map.tiles[id-1];
+		var z = (tile.x + tile.y) - (tile.x + tile.y) * 2;
+		document.querySelectorAll('.tile-info')[0].innerHTML = '<div class="inner">ID: '+tile.id+'<br>X: '+tile.x+'<br>Y: '+tile.y+'<br>Z: '+z+'</div>';
 	}
 
 }
@@ -167,6 +206,13 @@ var App = {
 			if (item.childNodes[3].type == 'range') {
 				addEvent(item.childNodes[3], 'mousemove', function() {
 					item.childNodes[1].childNodes[1].innerHTML = item.childNodes[3].value;
+					if (hasClass(item, 'entry-tilecap')) {
+						if (item.childNodes[3].value > 10000) {
+							document.getElementsByClassName('entry-clicklayer')[0].childNodes[3].disabled = true;
+						} else {
+							document.getElementsByClassName('entry-clicklayer')[0].childNodes[3].disabled = false;
+						}
+					}
 				})
 			}
 		});
@@ -181,34 +227,33 @@ var App = {
 		App.getMap(0);
 	},
 	handleMapgen: function () {
-		App.failedLoads = 0;
 		getAjax (window.location.pathname+'getmap.php?_'+new Date().getTime(), function(data) {
 
 			try {
 				data = JSON.parse(data);
 				App.failedLoads = 0;
 				Map.init(data.tiles);
-				removeClass(document.querySelectorAll('body')[0], 'loading');
 			} catch (e) {
+				console.log(e);
 				if (App.failedLoads == 5) {
 					console.log('loading error');
 				} else {
 					setTimeout(function(){
 						App.handleMapgen();
 					}, 1000);
-					App.failedLoads++;
 				}
+				App.failedLoads++;
 			}
 
 		});
 
 	},
 	getMap: function (n) {
+		App.failedLoads = 0;
+		addClass(document.querySelectorAll('body')[0], 'loading');
 		if (n) {
 			var tilecap = document.getElementsByClassName('entry-tilecap')[0].childNodes[1].childNodes[1].innerHTML;
 			var pow = document.getElementsByClassName('entry-pow')[0].childNodes[1].childNodes[1].innerHTML;
-
-			addClass(document.querySelectorAll('body')[0], 'loading');
 
 			getAjax (window.location.pathname+'getmap.php?tilecap='+tilecap+'&pow='+pow+'?_'+new Date().getTime(), function() {
 				App.handleMapgen();

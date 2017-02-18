@@ -58,12 +58,14 @@ body.loading:after {
 	position: fixed;
 	left: 20px;
 	top: 20px;
-	background: rgba(108, 232, 177, 0.65);
-	min-width: 400px;
+	background: rgba(108, 232, 195, 0.65);
+	min-width: 800px;
 	text-transform: uppercase;
 	padding: 10px 20px;
 	font-size: 1.2em;
 	z-index: 2;
+	box-sizing: border-box;
+	border-radius: 3px;
 }
 .menu .entry {
 	height: 30px;
@@ -72,17 +74,83 @@ body.loading:after {
 .menu .entry .name {
 	display: inline;
 }
+.menu .entry input[type='checkbox'] {
+	/*-webkit-appearance: none;*/
+	/*background: rgba(255, 255, 255, 0.7);
+	height: 16px;
+	width: 16px;
+	margin: 0;
+	margin-bottom: -3px;
+	display: inline-block;
+	position: relative;
+	border-radius: 3px;
+	cursor: pointer;*/
+}
+/*.menu .entry input[type='checkbox']:checked + label {
+	background: rgba(255, 255, 255, 0.7);
+}*/
 .menu .entry input[type='range'] {
 	float: right;
+	-webkit-appearance: none;
+	width: 70%;
+	margin: 0;
+	background: rgba(255, 255, 255, 0.7);
+	border-radius: 3px;
+}
+.menu .entry input[type=range]::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	height: 20px;
+	width: 16px;
+	background: rgba(53, 53, 53, 1);
+	cursor: pointer;
+	border-radius: 3px;
+}
+.menu .entry input[type=range]::-moz-range-thumb {
+	-webkit-appearance: none;
+	height: 20px;
+	width: 16px;
+	background: rgba(53, 53, 53, 1);
+	cursor: pointer;
+	margin-top: -14px;
+	border-radius: 3px;
+}
+.menu .entry input[type=range]:focus,
+.menu .entry input[type='checkbox'] {
+	outline: none;
 }
 .menu .entry span {
 	margin-left: 10px;
 	font-weight: bold;
 }
 .browser-dev-info {
-	position: absolute;
+	position: fixed;
 	font-size: 0.8em;
 	right: 0;
 	color: #656565;
 }
+#clicklayer {
+	position: absolute;
+}
+.tile-info {
+	position: fixed;
+	background: rgba(108, 232, 195, 0.65);
+	top: 220px;
+	left: 20px;
+	text-transform: uppercase;
+	font-size: 1.2em;
+	z-index: 2;
+	box-sizing: border-box;
+	border-radius: 3px;
+}
+.tile-info .inner {
+	padding: 10px 20px;
+}
 
+@media (min-width: 0) and (max-width: 881px) {
+	.menu {
+		min-width: calc(100% - 40px);
+	}
+	.menu .entry input[type='range'] {
+		width: 100%;
+	}
+}
