@@ -28,7 +28,7 @@
 				<div class="name">Click layer</div>
 				<input type="checkbox" value="fillgaps" checked>
 			</div>
-			<div class="entry">
+			<div class="entry entry-fillgaps">
 				<div class="name">(Later) Fill gaps</div>
 				<input type="checkbox" name="fillgaps" value="fillgaps">
 			</div>
