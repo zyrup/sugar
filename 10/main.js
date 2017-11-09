@@ -1,3 +1,5 @@
+'use strict';
+
 function hasClass(el, className) {
 	return el.classList ? el.classList.contains(className) : new RegExp('\\b'+ className+'\\b').test(el.className);
 }
@@ -37,18 +39,16 @@ lc      rc
 */
 
 var Map = {
-	init: function (tiles) {
+	init: function (data) {
 		var canvasWidth  = 0;
 		var canvasHeight = 0;
 
-		Map.tiles = tiles;
+		Map.tiles = data.tiles;
 		Map.tileSize = document.getElementsByName('value-tilesize')[0].value;
 		Map.clickLayerBool = document.getElementsByName('clicklayer')[0].checked;
 		Map.fillGapsBool = document.getElementsByName('fillgaps')[0].checked;
 		Map.clickLayer = document.getElementById('clicklayer');
 		Map.clickLayer.innerHTML = '';
-		document.getElementsByClassName('tile-info')[0].innerHTML = '';
-		document.getElementsByClassName('more-info')[0].innerHTML = '';
 
 		if (Map.tiles.length > 10000) {
 			Map.clickLayerBool = false;
@@ -62,11 +62,11 @@ var Map = {
 		Map.yVneg = 0;
 
 		Map.cordBase = {};
-		Map.cordBase.x1 = 4;
-		Map.cordBase.x2 = 8;
-		Map.cordBase.y1 = 2;
-		Map.cordBase.y2 = 7;
-		Map.cordBase.y3 = 9;
+		Map.cordBase.x1 = 4; // m
+		Map.cordBase.x2 = 8; // r
+		Map.cordBase.y1 = 2; // b
+		Map.cordBase.y2 = 7; // c
+		Map.cordBase.y3 = 9; // d
 		Map.enlargeCordBase();
 
 		Map.getCords();
@@ -95,6 +95,12 @@ var Map = {
 		}
 
 		Map.drawCords();
+
+		if (data.rivers) {
+			Map.rivers = data.rivers;
+			Map.drawRivers();
+		}
+
 		removeClass(document.querySelectorAll('body')[0], 'loading');
 
 		if (document.getElementById('map').width * document.getElementById('map').height  > 268435456) { // 16,384 x 16,384 = 268'435'456
@@ -163,6 +169,7 @@ var Map = {
 				'c': c,
 				'd': d
 			}
+			tile.pos.my = tile.pos.b + (tile.pos.c - tile.pos.b) / 2;
 
 		}
 
@@ -171,10 +178,18 @@ var Map = {
 		var i = 0;
 		var len = Map.tiles.length;
 		var tile = null;
+		var color = null;
 		for (i=0; i<len; i++) {
 			tile = Map.tiles[i];
 
-			Map.c.fillStyle = 'rgba(0, 0, 0, 0.2)';
+			if (tile.l == 1) {
+				color = 'rgba(8, 97, 158, 0.3)';
+			} else {
+				color = 0.1 + tile.h * 0.1;
+				color = 'rgba(0, 0, 0, '+color+')';
+			}
+
+			Map.c.fillStyle = color;
 
 			if (tile.pos) {
 				Map.c.beginPath();
@@ -214,6 +229,63 @@ var Map = {
 
 		}
 	},
+	drawRivers: function () {
+		var len = Map.rivers.length;
+		var i   = 0;
+		var mx1 = null;
+		var mx2 = null;
+		var my1 = null;
+		var my2 = null;
+		var tmp = null;
+		Map.c.strokeStyle = 'rgba(8, 97, 158, 0.2)';
+		Map.c.lineWidth = 4;
+		for (i; i<len; i++) {
+			// console.log(Map.rivers[i].f, Map.rivers[i].t);
+
+			if ( Map.rivers[i].t < 0 ) { // approaching edge.
+
+				if (Map.tiles[Map.rivers[i].f].l == 1) { // don't draw edge floating.
+					continue;
+				}
+
+				mx1 = Map.tiles[Map.rivers[i].f].pos.m;
+				my1 = Map.tiles[Map.rivers[i].f].pos.my;
+
+				tmp = Map.rivers[i].t;
+				if (tmp == -1) {        // top left
+					mx2 = (Map.tiles[Map.rivers[i].f].pos.l + Map.tiles[Map.rivers[i].f].pos.m) / 2;
+					my2 = (Map.tiles[Map.rivers[i].f].pos.a + Map.tiles[Map.rivers[i].f].pos.b) / 2;
+				} else if (tmp == -2) { // left
+					mx2 = Map.tiles[Map.rivers[i].f].pos.l;
+					my2 = (Map.tiles[Map.rivers[i].f].pos.b + Map.tiles[Map.rivers[i].f].pos.c) / 2;
+				} else if (tmp == -3) { // left bottom
+					mx2 = (Map.tiles[Map.rivers[i].f].pos.l + Map.tiles[Map.rivers[i].f].pos.m) / 2;
+					my2 = (Map.tiles[Map.rivers[i].f].pos.c + Map.tiles[Map.rivers[i].f].pos.d) / 2;
+				} else if (tmp == -4) { // right bottom
+					mx2 = (Map.tiles[Map.rivers[i].f].pos.m + Map.tiles[Map.rivers[i].f].pos.r) / 2;
+					my2 = (Map.tiles[Map.rivers[i].f].pos.d + Map.tiles[Map.rivers[i].f].pos.c) / 2;
+				} else if (tmp == -5) { // right
+					mx2 = Map.tiles[Map.rivers[i].f].pos.r;
+					my2 = (Map.tiles[Map.rivers[i].f].pos.b + Map.tiles[Map.rivers[i].f].pos.c) / 2;
+				} else if (tmp == -6) { // top right
+					mx2 = (Map.tiles[Map.rivers[i].f].pos.m + Map.tiles[Map.rivers[i].f].pos.r) / 2;
+					my2 = (Map.tiles[Map.rivers[i].f].pos.a + Map.tiles[Map.rivers[i].f].pos.b) / 2;
+				}
+
+			} else {
+				mx1 = Map.tiles[Map.rivers[i].f].pos.m;
+				mx2 = Map.tiles[Map.rivers[i].t].pos.m;
+				my1 = Map.tiles[Map.rivers[i].f].pos.my;
+				my2 = Map.tiles[Map.rivers[i].t].pos.my;
+			}
+
+			Map.c.beginPath();
+			Map.c.moveTo(mx1, my1);
+			Map.c.lineTo(mx2, my2);
+			Map.c.stroke();
+			
+		}
+	},
 	showTileInfo: function (id) {
 		var tile = Map.tiles[id-1];
 		if (typeof tile == 'undefined') {
@@ -221,7 +293,7 @@ var Map = {
 			return;
 		}
 		var z = (tile.x + tile.y) - (tile.x + tile.y) * 2;
-		document.querySelectorAll('.tile-info')[0].innerHTML = '<div class="inner">ID: '+tile.id+'<br>X: '+tile.x+'<br>Y: '+tile.y+'<br>Z: '+z+'</div>';
+		document.querySelectorAll('.tile-info')[0].innerHTML = '<div class="inner">ID: '+tile.id+'<br>X: '+tile.x+'<br>Y: '+tile.y+'<br>Z: '+z+'<br>H: '+tile.h+'</div>';
 	}
 
 }
@@ -240,12 +312,15 @@ var App = {
 			if (typeof item.childNodes[1].childNodes[1] != 'undefined') {
 				addEvent(item.childNodes[1].childNodes[1].childNodes[3], 'input', function() {
 					this.parentNode.parentNode.parentNode.childNodes[3].childNodes[1].value = this.value;
+					App.checkTileCap();
 				})
 			}
 			
 		});
 
 		addEvent(document.getElementsByName('send')[0], 'click', function() {
+			document.getElementsByClassName('tile-info')[0].innerHTML = '';
+			document.getElementsByClassName('more-info')[0].innerHTML = '';
 			App.getMap(1);
 		})
 
@@ -286,7 +361,7 @@ var App = {
 					document.getElementsByClassName('more-info')[0].innerHTML = 'Loading error. A page reload might help.';
 					return;
 				}
-				Map.init(data.tiles);
+				Map.init(data);
 			} catch (e) {
 				console.log(e);
 				if (App.failedLoads == 15) {
@@ -311,7 +386,9 @@ var App = {
 			var pow     = document.getElementsByName('value-pow')[0].value;
 			var fillgap = (Map.fillGapsBool ? '&fillgap=1' : '');
 
-			getAjax (window.location.pathname+'getmap.php?tilecap='+tilecap+'&pow='+pow+fillgap, function() {
+			var corrugation = '&h=' + document.getElementsByName('value-corrugation')[0].value;
+
+			getAjax (window.location.pathname+'getmap.php?tilecap='+tilecap+'&pow='+pow+fillgap+corrugation, function() {
 				App.handleMapgen();
 			});
 		} else {

@@ -16,22 +16,22 @@
 				<div class="col col30">
 					<div class="name row">
 						<div class="col col40">Tile Cap</div>
-						<input class="col col60" type="text" value="1000" name="value-tilecap">
+						<input class="col col60" type="text" value="700" name="value-tilecap">
 					</div>
 				</div>
 				<div class="col col70">
-					<input type="range" value="1000" min="1" max="1000000">
+					<input type="range" value="700" min="1" max="1000000">
 				</div>
 			</div>
 			<div class="entry row entry-pow">
 				<div class="col col30">
 					<div class="name row">
 						<div class="col col40">pow</div>
-						<input class="col col60" type="text" value="0.00125" name="value-pow">
+						<input class="col col60" type="text" value="1" name="value-pow">
 					</div>
 				</div>
 				<div class="col col70">
-					<input type="range" value="0.00125" step="0.00005" min="0.00125" max="1">
+					<input type="range" value="1" step="0.00005" min="0.00125" max="1">
 				</div>
 			</div>
 			<div class="entry row entry-tilesize">
@@ -43,6 +43,17 @@
 				</div>
 				<div class="col col70">
 					<input type="range" value="2" step="0.25" min="0.25" max="10">
+				</div>
+			</div>
+			<div class="entry row entry-corrugation">
+				<div class="col col30">
+					<div class="name row">
+						<div class="col col40">Corrugation</div>
+						<input class="col col60" type="text" value="2" name="value-corrugation">
+					</div>
+				</div>
+				<div class="col col70">
+					<input type="range" value="2" step="0.0000005" min="0.0000005" max="100">
 				</div>
 			</div>
 			<div class="entry row entry-clicklayer">
